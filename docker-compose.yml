@@ -1,0 +1,18 @@
+# Local-only Postgres for the Aldi Weekly Grocery Planner (Phase 1).
+# Bound to 127.0.0.1 only — no auth in Phase 1, so the DB must never be exposed.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: meal_planner_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: planner
+      POSTGRES_PASSWORD: planner
+      POSTGRES_DB: meal_planner
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - meal_planner_pgdata:/var/lib/postgresql/data
+
+volumes:
+  meal_planner_pgdata:

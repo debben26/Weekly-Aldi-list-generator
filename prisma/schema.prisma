@@ -1,0 +1,432 @@
+// Aldi Weekly Grocery Planner — Phase 1 schema.
+// Authoritative source: spec.md Section 5 (Domain Model). Section 0 decisions are load-bearing.
+// Notes:
+//  - purchase_unit / unit fields are STRINGS ("enum-ish", spec 5.3a) so users can add units.
+//  - Closed-value sets use native Postgres enums.
+//  - Money is Decimal; quantities/sizes are Float; servings/intervals are Int.
+//  - TripSnapshot* tables are DENORMALIZED + FROZEN (spec 5.6 / 10.3): they hold display
+//    values captured at completion and store item_id as a plain column (no FK) so editing or
+//    deleting a live Item can never mutate history.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums (closed value sets) ----------
+
+enum Dimension {
+  volume
+  weight
+  count
+  package
+}
+
+enum RuleType {
+  weekly
+  restock
+}
+
+enum PantryStatus {
+  have
+  low
+  out
+  unknown
+}
+
+enum SourceType {
+  weekly_staple
+  restock
+  pantry_review
+  manual
+  recipe
+}
+
+enum MealPlanStatus {
+  draft
+  active
+  completed
+}
+
+enum ShoppingListStatus {
+  draft
+  active
+  completed
+}
+
+enum AldiFitStatus {
+  good
+  medium
+  low
+  unknown
+}
+
+enum PriceSourceType {
+  manual
+  estimated
+  historical_average
+  future_receipt
+  future_api
+}
+
+// ---------- 5.1 Identity & Household ----------
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  memberships  HouseholdMember[]
+  // future hub (5.8): recipes a user owns/created
+  ownedRecipes Recipe[]          @relation("RecipeOwner")
+}
+
+model Household {
+  id            String            @id @default(cuid())
+  name          String
+  createdAt     DateTime          @default(now())
+  members       HouseholdMember[]
+  recipes       Recipe[]
+  mealPlans     MealPlan[]
+  stapleRules   StapleRule[]
+  pantryItems   PantryItem[]
+  shoppingLists ShoppingList[]
+  tripSnapshots TripSnapshot[]
+}
+
+model HouseholdMember {
+  id          String    @id @default(cuid())
+  userId      String
+  householdId String
+  role        String    @default("owner") // owner/admin in Phase 1
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, householdId])
+}
+
+// ---------- 5.2 Store Layout (Store owns ordered sections directly; no StoreLayout) ----------
+
+model Store {
+  id                String             @id @default(cuid())
+  brand             String             @default("Aldi")
+  name              String
+  location          String?
+  isDefault         Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  sections          StoreSection[]
+  shoppingLists     ShoppingList[]
+  priceObservations PriceObservation[]
+}
+
+model StoreSection {
+  id                String             @id @default(cuid())
+  storeId           String
+  name              String
+  sortOrder         Int
+  active            Boolean            @default(true)
+  notes             String?
+  store             Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  itemsDefault      Item[]             @relation("ItemDefaultSection")
+  stapleRules       StapleRule[]
+  shoppingListItems ShoppingListItem[]
+
+  @@unique([storeId, name])
+  @@index([storeId, sortOrder])
+}
+
+// ---------- 5.3 Item Catalog ----------
+
+model Item {
+  id               String  @id @default(cuid())
+  canonicalName    String  @unique
+  food             Boolean @default(true)
+  aldiFriendly     Boolean @default(true)
+  defaultSectionId String?
+  notes            String?
+  active           Boolean @default(true)
+
+  // 5.3a unit fields
+  purchaseUnit         String // how you BUY it: each, bag, gallon, lb, oz_package, dozen, ...
+  purchaseUnitSize     Float? // e.g. 8 (oz)
+  purchaseUnitSizeUnit String? // e.g. "oz", "ct"
+  recipeToPurchase     Json? // { "cup": 0.5 } meaning 1 cup ~= 0.5 purchase unit
+  dimension            Dimension?
+
+  // meaningful variant attributes kept separate (5.3) — do not collapse into one opaque string
+  size    String?
+  variant String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  defaultSection    StoreSection?      @relation("ItemDefaultSection", fields: [defaultSectionId], references: [id])
+  aliases           ItemAlias[]
+  recipeIngredients RecipeIngredient[]
+  stapleRules       StapleRule[]
+  pantryItems       PantryItem[]
+  shoppingListItems ShoppingListItem[]
+  priceObservations PriceObservation[]
+  retailerProducts  RetailerProduct[]
+}
+
+model ItemAlias {
+  id        String @id @default(cuid())
+  itemId    String
+  aliasText String // normalized
+  item      Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, aliasText])
+  @@index([aliasText])
+}
+
+// ---------- 5.4 Recipes & Meal Plans ----------
+
+model Recipe {
+  id            String        @id @default(cuid())
+  householdId   String
+  title         String
+  notes         String?
+  baseServings  Int           @default(4)
+  prepTime      Int? // minutes
+  cookTime      Int? // minutes
+  favorite      Boolean       @default(false)
+  aldiFitStatus AldiFitStatus @default(unknown) // derived (8.4)
+
+  // future hub fields (5.8) — present, unused in Phase 1
+  visibility       String  @default("private")
+  ownerUserId      String?
+  createdById      String?
+  sourceRecipeId   String?
+  isPublic         Boolean @default(false)
+  moderationStatus String  @default("none")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  household       Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  owner           User?              @relation("RecipeOwner", fields: [ownerUserId], references: [id])
+  ingredients     RecipeIngredient[]
+  mealPlanEntries MealPlanEntry[]
+}
+
+model RecipeIngredient {
+  id         String  @id @default(cuid())
+  recipeId   String
+  rawText    String // ALWAYS preserved (10.3)
+  itemId     String?
+  quantity   Float?
+  recipeUnit String? // cup/tbsp/g/clove/each
+  optional   Boolean @default(false)
+  scalable   Boolean @default(true) // false for "to taste", "1 pinch", garnish
+  notes      String?
+  position   Int     @default(0)
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  item   Item?  @relation(fields: [itemId], references: [id])
+
+  @@index([recipeId])
+}
+
+model MealPlan {
+  id            String         @id @default(cuid())
+  householdId   String
+  weekStartDate DateTime       @db.Date
+  status        MealPlanStatus @default(draft)
+  createdAt     DateTime       @default(now())
+
+  household Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  entries   MealPlanEntry[]
+}
+
+model MealPlanEntry {
+  id             String  @id @default(cuid())
+  mealPlanId     String
+  recipeId       String
+  targetServings Int // defaults to recipe.baseServings at creation time
+  mealType       String? // flexible; dinner-style default
+
+  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipe   Recipe   @relation(fields: [recipeId], references: [id])
+
+  @@index([mealPlanId])
+}
+
+// ---------- 5.5 Staples, Restock, Pantry ----------
+
+model StapleRule {
+  id               String   @id @default(cuid())
+  householdId      String
+  itemId           String
+  ruleType         RuleType
+  defaultQuantity  Float?
+  defaultUnit      String?
+  defaultSectionId String?
+  active           Boolean  @default(true)
+  notes            String?
+
+  // restock-only
+  expectedIntervalDays Int?
+  lastPurchasedDate    DateTime? @db.Date
+  snoozedUntil         DateTime? @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  household      Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  item           Item          @relation(fields: [itemId], references: [id])
+  defaultSection StoreSection? @relation(fields: [defaultSectionId], references: [id])
+
+  @@index([householdId, ruleType])
+}
+
+model PantryItem {
+  id          String       @id @default(cuid())
+  householdId String
+  itemId      String
+  status      PantryStatus @default(unknown)
+  quantity    Float?
+  unit        String?
+  lastUpdated DateTime     @default(now()) @updatedAt
+  notes       String?
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  item      Item      @relation(fields: [itemId], references: [id])
+
+  @@unique([householdId, itemId])
+}
+
+// ---------- 5.6 Shopping Lists & Trip History ----------
+
+model ShoppingList {
+  id          String             @id @default(cuid())
+  householdId String
+  storeId     String
+  weekStart   DateTime           @db.Date
+  status      ShoppingListStatus @default(active)
+  createdAt   DateTime           @default(now())
+  completedAt DateTime?
+
+  household    Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  store        Store              @relation(fields: [storeId], references: [id])
+  items        ShoppingListItem[]
+  tripSnapshot TripSnapshot?
+}
+
+model ShoppingListItem {
+  id             String   @id @default(cuid())
+  shoppingListId String
+  itemId         String? // nullable for free-text manual adds
+  displayName    String
+  quantity       Float?
+  unit           String?
+  sectionId      String?
+  checked        Boolean  @default(false)
+  notes          String?
+  estimatedPrice Decimal? @db.Decimal(10, 2) // kept separate from paidPrice (5.7 / 10.3)
+  paidPrice      Decimal? @db.Decimal(10, 2)
+  sourceSummary  String? // derived label
+
+  shoppingList ShoppingList             @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  item         Item?                    @relation(fields: [itemId], references: [id])
+  section      StoreSection?            @relation(fields: [sectionId], references: [id])
+  sources      ShoppingListItemSource[]
+
+  @@index([shoppingListId])
+}
+
+model ShoppingListItemSource {
+  id                 String     @id @default(cuid())
+  shoppingListItemId String
+  sourceType         SourceType
+  recipeId           String? // when sourceType = recipe
+  quantity           Float? // per-source contributed quantity (8.1a breakdown)
+  unit               String?
+
+  shoppingListItem ShoppingListItem @relation(fields: [shoppingListItemId], references: [id], onDelete: Cascade)
+
+  @@index([shoppingListItemId])
+}
+
+// FROZEN snapshot of a completed week (denormalized — spec 5.6 / 10.3).
+model TripSnapshot {
+  id             String   @id @default(cuid())
+  householdId    String
+  shoppingListId String?  @unique // optional back-link; snapshot survives if list is later deleted
+  weekStart      DateTime @db.Date
+  completedAt    DateTime
+  storeName      String
+  totalEstimated Decimal? @db.Decimal(10, 2)
+  totalPaid      Decimal? @db.Decimal(10, 2)
+  itemCount      Int      @default(0)
+
+  household    Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  shoppingList ShoppingList?      @relation(fields: [shoppingListId], references: [id], onDelete: SetNull)
+  items        TripSnapshotItem[]
+}
+
+// FROZEN line item. Display values captured at completion; itemId is a plain column (NO FK)
+// used for analytics joins only — editing/deleting the live Item never changes these values.
+model TripSnapshotItem {
+  id             String   @id @default(cuid())
+  tripSnapshotId String
+  displayName    String
+  quantity       Float?
+  unit           String?
+  sectionName    String?
+  checked        Boolean  @default(false)
+  estimatedPrice Decimal? @db.Decimal(10, 2)
+  paidPrice      Decimal? @db.Decimal(10, 2)
+  sourceLabels   String[] // e.g. ["Weekly Staples", "Taco Bowls"]
+  itemId         String? // analytics join only — intentionally NOT a relation/FK
+
+  tripSnapshot TripSnapshot @relation(fields: [tripSnapshotId], references: [id], onDelete: Cascade)
+
+  @@index([tripSnapshotId])
+  @@index([itemId])
+}
+
+// ---------- 5.7 Pricing ----------
+
+model PriceObservation {
+  id            String          @id @default(cuid())
+  itemId        String
+  storeId       String
+  amount        Decimal         @db.Decimal(10, 2)
+  currency      String          @default("USD")
+  quantityBasis String?
+  unitPrice     Decimal?        @db.Decimal(10, 4)
+  observedDate  DateTime        @db.Date
+  sourceType    PriceSourceType @default(manual)
+  confidence    String?
+  notes         String?
+
+  item  Item  @relation(fields: [itemId], references: [id])
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@index([itemId, observedDate])
+}
+
+// ---------- 5.8 Future-ready (present, unused in Phase 1) ----------
+
+model RetailerProduct {
+  id         String   @id @default(cuid())
+  itemId     String?
+  externalId String?
+  provider   String?
+  createdAt  DateTime @default(now())
+  item       Item?    @relation(fields: [itemId], references: [id])
+}
+
+model OrderProvider {
+  id        String   @id @default(cuid())
+  name      String
+  provider  String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
