@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { DEFAULT_SECTION_ORDER, OTHER_SECTION_NAME } from "@/lib/constants";
-import { STARTER_CATALOG, dimensionForPurchaseUnit } from "@/lib/seed-data";
+import { STARTER_CATALOG } from "@/lib/seed-data";
 
 describe("default sections", () => {
   it("always includes the Other / Unassigned fallback section (spec 5.2)", () => {
@@ -45,17 +45,5 @@ describe("starter catalog (spec 6.0 + Appendix A)", () => {
     const milk = STARTER_CATALOG.find((i) => i.name === "Milk (2%)");
     expect(cheese?.recipeToPurchase).toEqual({ cup: 0.5 });
     expect(milk?.recipeToPurchase).toEqual({ cup: 0.0625 });
-  });
-});
-
-describe("dimensionForPurchaseUnit (spec 5.3a)", () => {
-  it("maps units to their quantity dimension", () => {
-    expect(dimensionForPurchaseUnit("gallon")).toBe("volume");
-    expect(dimensionForPurchaseUnit("lb")).toBe("weight");
-    expect(dimensionForPurchaseUnit("oz_package")).toBe("weight");
-    expect(dimensionForPurchaseUnit("each")).toBe("count");
-    expect(dimensionForPurchaseUnit("dozen")).toBe("count");
-    expect(dimensionForPurchaseUnit("bag")).toBe("package");
-    expect(dimensionForPurchaseUnit("jar")).toBe("package");
   });
 });

@@ -4,10 +4,6 @@
 // recipe_to_purchase hints are added where obvious (Appendix A footnote); unknown conversions
 // are left empty and handled by the merge engine (8.1a).
 
-// Mirrors the Prisma `Dimension` enum (spec 5.3a). Kept as a local union so this module stays
-// import-light and loadable by the tsx seed runner without alias/path resolution.
-export type Dimension = "volume" | "weight" | "count" | "package";
-
 export type CatalogItem = {
   name: string;
   section: string; // must match a DEFAULT_SECTION_ORDER name
@@ -15,24 +11,6 @@ export type CatalogItem = {
   aldiFriendly: boolean;
   recipeToPurchase?: Record<string, number>;
 };
-
-// Map a purchase unit to its quantity dimension (spec 5.3a). Used to decide addability later.
-export function dimensionForPurchaseUnit(unit: string): Dimension {
-  switch (unit) {
-    case "gallon":
-    case "half_gallon":
-      return "volume";
-    case "lb":
-    case "oz_package":
-      return "weight";
-    case "each":
-    case "dozen":
-    case "bunch":
-      return "count";
-    default: // bag, box, jar, can, loaf, ...
-      return "package";
-  }
-}
 
 export const STARTER_CATALOG: CatalogItem[] = [
   // Produce

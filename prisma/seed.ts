@@ -6,7 +6,8 @@ import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { DEFAULT_SECTION_ORDER } from "../src/lib/constants";
-import { STARTER_CATALOG, dimensionForPurchaseUnit } from "../src/lib/seed-data";
+import { STARTER_CATALOG } from "../src/lib/seed-data";
+import { dimensionForPurchaseUnit } from "../src/services/UnitService";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
