@@ -8,6 +8,7 @@ import {
   removeListItem,
   addManualItem,
   addRestockToList,
+  finalizeTrip,
 } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -95,13 +96,25 @@ export default async function GroceryListDetail({
             checked{estTotal > 0 ? ` · est. $${estTotal.toFixed(2)}` : ""}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Link
             href={`/grocery-list/${list.id}/print`}
             className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100"
           >
             Print
           </Link>
+          {list.status === "completed" ? (
+            <span className="rounded bg-green-100 px-3 py-1.5 text-sm text-green-700">
+              Trip completed
+            </span>
+          ) : (
+            <form action={finalizeTrip}>
+              <input type="hidden" name="listId" value={list.id} />
+              <button className="rounded bg-green-700 px-3 py-1.5 text-sm text-white hover:bg-green-800">
+                Complete trip
+              </button>
+            </form>
+          )}
           <Link href="/grocery-list" className="rounded px-3 py-1.5 text-sm text-gray-500 hover:text-gray-900">
             ← All lists
           </Link>

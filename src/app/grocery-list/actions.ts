@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { generateFromMealPlan } from "./generate";
+import { completeTrip } from "./complete";
 
 function num(v: FormDataEntryValue | null): number | null {
   const s = String(v ?? "").trim();
@@ -17,6 +18,12 @@ export async function generateList(formData: FormData) {
   if (!mealPlanId) redirect(`/grocery-list?error=${encodeURIComponent("Choose a meal plan.")}`);
   const listId = await generateFromMealPlan(mealPlanId);
   redirect(`/grocery-list/${listId}`);
+}
+
+export async function finalizeTrip(formData: FormData) {
+  const listId = String(formData.get("listId") ?? "");
+  const snapshotId = await completeTrip(listId);
+  redirect(`/history?completed=${snapshotId}`);
 }
 
 export async function updateListItem(formData: FormData) {
