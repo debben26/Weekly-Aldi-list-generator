@@ -163,6 +163,7 @@ model Item {
   id               String  @id @default(cuid())
   canonicalName    String  @unique
   food             Boolean @default(true)
+  taxable          Boolean @default(false) // grocery tax flag (8.3): food exempt, non-food taxable
   aldiFriendly     Boolean @default(true)
   defaultSectionId String?
   notes            String?

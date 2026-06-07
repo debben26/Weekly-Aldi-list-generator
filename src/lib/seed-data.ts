@@ -10,6 +10,8 @@ export type CatalogItem = {
   purchaseUnit: string;
   aldiFriendly: boolean;
   recipeToPurchase?: Record<string, number>;
+  food?: boolean; // default true; non-food (household) items set false
+  taxable?: boolean; // default false (food exempt, 8.3); non-food items set true
 };
 
 export const STARTER_CATALOG: CatalogItem[] = [
@@ -136,14 +138,14 @@ export const STARTER_CATALOG: CatalogItem[] = [
   { name: "Pretzels", section: "Snacks", purchaseUnit: "bag", aldiFriendly: true },
   { name: "Potato Chips", section: "Snacks", purchaseUnit: "bag", aldiFriendly: true },
 
-  // Household
-  { name: "Paper Towels", section: "Household", purchaseUnit: "each", aldiFriendly: true },
-  { name: "Toilet Paper", section: "Household", purchaseUnit: "each", aldiFriendly: true },
-  { name: "Dish Soap", section: "Household", purchaseUnit: "each", aldiFriendly: true },
-  { name: "Dishwasher Pods", section: "Household", purchaseUnit: "each", aldiFriendly: true },
-  { name: "Trash Bags", section: "Household", purchaseUnit: "box", aldiFriendly: true },
-  { name: "Laundry Detergent", section: "Household", purchaseUnit: "each", aldiFriendly: true },
-  { name: "Aluminum Foil", section: "Household", purchaseUnit: "box", aldiFriendly: true },
-  { name: "Ziploc Bags", section: "Household", purchaseUnit: "box", aldiFriendly: true },
-  { name: "Hand Soap", section: "Household", purchaseUnit: "each", aldiFriendly: true },
+  // Household (non-food → taxable in WI; 8.3)
+  { name: "Paper Towels", section: "Household", purchaseUnit: "each", aldiFriendly: true, food: false, taxable: true },
+  { name: "Toilet Paper", section: "Household", purchaseUnit: "each", aldiFriendly: true, food: false, taxable: true },
+  { name: "Dish Soap", section: "Household", purchaseUnit: "each", aldiFriendly: true, food: false, taxable: true },
+  { name: "Dishwasher Pods", section: "Household", purchaseUnit: "each", aldiFriendly: true, food: false, taxable: true },
+  { name: "Trash Bags", section: "Household", purchaseUnit: "box", aldiFriendly: true, food: false, taxable: true },
+  { name: "Laundry Detergent", section: "Household", purchaseUnit: "each", aldiFriendly: true, food: false, taxable: true },
+  { name: "Aluminum Foil", section: "Household", purchaseUnit: "box", aldiFriendly: true, food: false, taxable: true },
+  { name: "Ziploc Bags", section: "Household", purchaseUnit: "box", aldiFriendly: true, food: false, taxable: true },
+  { name: "Hand Soap", section: "Household", purchaseUnit: "each", aldiFriendly: true, food: false, taxable: true },
 ];

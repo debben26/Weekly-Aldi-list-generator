@@ -35,6 +35,20 @@ export const MEAL_WEIGHT_PANTRY_OVERLAP = 0.5; // per ingredient already on hand
 export const MEAL_COST_REFERENCE = 20; // $ baseline; cheaper-than-baseline earns a small boost
 export const MEAL_WEIGHT_COST = 2;
 
+// --- Price estimation & grocery tax (phase2-receipts-spec.md §8.1 / §8.3) ---
+// Confidence tiers by observation count: >= 3 -> high (median + IQR); 1-2 -> medium (recent ±25%);
+// 0 -> low (section average / seeded baseline / generic fallback).
+export const ESTIMATE_MIN_OBS_HIGH = 3;
+export const ESTIMATE_SPARSE_RANGE_PCT = 0.25; // sparse range = point ± 25%
+export const ESTIMATE_SECTION_RANGE_PCT = 0.4; // section-average range = avg × [0.6, 1.4]
+export const ESTIMATE_BASELINE_RANGE_PCT = 0.3; // seeded-baseline range = base × [0.7, 1.3]
+// Generic last-resort guess when an item has no history, no section average, and no baseline.
+export const ESTIMATE_GENERIC_POINT = 3.0; // $ best-guess point
+export const ESTIMATE_GENERIC_RANGE_PCT = 0.6; // generic range = point × [0.4, 1.6]
+// Grocery tax: flat combined rate applied only to taxable items (8.3). Configurable later via a
+// Settings store; a constant for now (WI combined ~5.5%).
+export const DEFAULT_TAX_RATE = 0.055;
+
 // Default Aldi route order (spec 5.2). Other / Unassigned is always last.
 export const DEFAULT_SECTION_ORDER: string[] = [
   "Produce",
