@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import {
   buildSnapshotItem,
   tripTotals,
-  checkedItemIds,
   type LiveListItem,
 } from "@/services/TripCompletionService";
 import { computeUnitPrice, selectObservation } from "@/services/PriceObservationService";
@@ -15,9 +14,8 @@ const SOURCE_LABELS: Record<string, string> = {
   recipe: "Recipe",
 };
 
-function dateOnly(): Date {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+function dateOnly(from: Date): Date {
+  return new Date(from.getFullYear(), from.getMonth(), from.getDate());
 }
 
 // Finalize a week (spec 6.13): freeze a denormalized TripSnapshot, record PriceObservations,
@@ -65,7 +63,9 @@ export async function completeTrip(listId: string): Promise<string> {
   }));
 
   const totals = tripTotals(liveItems);
-  const observedDate = dateOnly();
+  // Single timestamp shared across the whole completion — snapshot and list use the same instant.
+  const now = new Date();
+  const observedDate = dateOnly(now);
 
   // All mutations run in a single transaction so a mid-flight failure rolls back cleanly and
   // the next retry finds no snapshot (idempotency check above) and re-runs from scratch.
@@ -75,40 +75,46 @@ export async function completeTrip(listId: string): Promise<string> {
         householdId: list.householdId,
         shoppingListId: list.id,
         weekStart: list.weekStart,
-        completedAt: new Date(),
+        completedAt: now,
         storeName: `${list.store.brand} · ${list.store.name}`,
         totalEstimated: totals.totalEstimated,
         totalPaid: totals.totalPaid,
-        itemCount: list.items.length,
+        itemCount: list.items.filter((i) => i.checked).length,
         items: { create: liveItems.map(buildSnapshotItem) },
       },
     });
 
     // Price observations only for CHECKED items — unchecked items were not purchased (spec 6.13).
+    const priceObsData = [];
     for (const it of list.items) {
       if (!it.checked || !it.itemId) continue;
       const est = it.estimatedPrice != null ? Number(it.estimatedPrice) : null;
       const paid = it.paidPrice != null ? Number(it.paidPrice) : null;
       const obs = selectObservation(est, paid);
       if (!obs) continue;
-      await tx.priceObservation.create({
-        data: {
-          itemId: it.itemId,
-          storeId: list.storeId,
-          amount: obs.amount,
-          sourceType: obs.sourceType,
-          observedDate,
-          quantityBasis: it.quantity != null ? `${it.quantity} ${it.unit ?? ""}`.trim() : null,
-          unitPrice: computeUnitPrice(obs.amount, it.quantity),
-        },
+      priceObsData.push({
+        itemId: it.itemId,
+        storeId: list.storeId,
+        amount: obs.amount,
+        sourceType: obs.sourceType,
+        observedDate,
+        quantityBasis: it.quantity != null ? `${it.quantity} ${it.unit ?? ""}`.trim() : null,
+        unitPrice: computeUnitPrice(obs.amount, it.quantity),
       });
     }
+    if (priceObsData.length) {
+      await tx.priceObservation.createMany({ data: priceObsData });
+    }
 
-    // Restock learns from real purchases (spec 6.13): bump last_purchased_date for checked items.
-    const checked = checkedItemIds(liveItems);
-    if (checked.length) {
+    // Restock last_purchased_date: only bump when the item was explicitly added as a Restock
+    // source on this trip. Weekly-staple purchases must NOT update this — they would keep
+    // daysSince perpetually small and suppress the restock signal for dual-role items.
+    const restockChecked = liveItems
+      .filter((it) => it.checked && it.itemId != null && it.sourceLabels.includes("Restock"))
+      .map((it) => it.itemId as string);
+    if (restockChecked.length) {
       await tx.stapleRule.updateMany({
-        where: { householdId: list.householdId, ruleType: "restock", itemId: { in: checked } },
+        where: { householdId: list.householdId, ruleType: "restock", itemId: { in: restockChecked } },
         data: { lastPurchasedDate: observedDate, snoozedUntil: null },
       });
     }
@@ -121,7 +127,7 @@ export async function completeTrip(listId: string): Promise<string> {
 
     await tx.shoppingList.update({
       where: { id: list.id },
-      data: { status: "completed", completedAt: new Date() },
+      data: { status: "completed", completedAt: now },
     });
 
     return snapshot.id;

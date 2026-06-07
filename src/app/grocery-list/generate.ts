@@ -32,6 +32,23 @@ export async function generateFromMealPlan(
   });
   if (!plan) throw new Error("Meal plan not found");
 
+  // Guard: do not overwrite a completed trip — that would orphan the existing snapshot link
+  // and risk creating a duplicate history entry for the same week.
+  // Checked early (before the expensive catalog/merge work) so failures are fast.
+  const completedList = await prisma.shoppingList.findFirst({
+    where: {
+      householdId: plan.householdId,
+      storeId: store.id,
+      weekStart: plan.weekStartDate,
+      status: "completed",
+    },
+  });
+  if (completedList) {
+    throw new Error(
+      "A completed trip already exists for this week. Complete a new week to generate a fresh list.",
+    );
+  }
+
   const [staples, pantry, catalog, otherSection] = await Promise.all([
     prisma.stapleRule.findMany({
       where: { householdId: plan.householdId, ruleType: "weekly", active: true },
@@ -113,25 +130,15 @@ export async function generateFromMealPlan(
   // 8. Merge
   const rows = mergeContributions(kept, itemInfoById);
 
-  // Guard: do not overwrite a completed trip — that would orphan the existing snapshot link
-  // and risk creating a duplicate history entry for the same week.
-  const completedList = await prisma.shoppingList.findFirst({
+  // Replace any existing active list for this household/store/week, then persist fresh.
+  // The status filter ensures a completed list can never be deleted here even under a race.
+  await prisma.shoppingList.deleteMany({
     where: {
       householdId: plan.householdId,
       storeId: store.id,
       weekStart: plan.weekStartDate,
-      status: "completed",
+      status: { not: "completed" },
     },
-  });
-  if (completedList) {
-    throw new Error(
-      "A completed trip already exists for this week. Complete a new week to generate a fresh list.",
-    );
-  }
-
-  // Replace any existing (non-completed) list for this household/store/week, then persist fresh.
-  await prisma.shoppingList.deleteMany({
-    where: { householdId: plan.householdId, storeId: store.id, weekStart: plan.weekStartDate },
   });
   const list = await prisma.shoppingList.create({
     data: {
