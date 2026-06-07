@@ -48,8 +48,12 @@ export default async function ReceiptsPage() {
             </thead>
             <tbody>
               {receipts.map((r) => (
-                <tr key={r.id} className="border-t border-gray-100">
-                  <td className="px-4 py-2">{fmtDate(r.purchaseDate)}</td>
+                <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
+                  <td className="px-4 py-2">
+                    <Link href={`/receipts/${r.id}`} className="text-gray-900 hover:underline">
+                      {fmtDate(r.purchaseDate)}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2">{r.store.name}</td>
                   <td className="px-4 py-2 text-right">{r._count.lines}</td>
                   <td className="px-4 py-2 text-right">

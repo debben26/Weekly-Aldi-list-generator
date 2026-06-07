@@ -54,7 +54,12 @@ describe("importReceipt (phase2 §6.1 / M1)", () => {
     expect(milk).toBeTruthy();
     expect(milk!.normalizedName).toBe("whole milk gal");
     expect(Number(milk!.unitPrice)).toBeCloseTo(2.79 / 3, 4);
-    expect(saved!.lines.every((l) => l.matchStatus === "unmatched")).toBe(true);
+    // M2: matching runs during import, so lines are scored (never left at the `unmatched` default).
+    expect(
+      saved!.lines.every(
+        (l) => l.matchStatus === "needs_review" || l.matchStatus === "auto_matched",
+      ),
+    ).toBe(true);
   });
 
   it("blocks a duplicate (store, purchase_date, total) import", async () => {

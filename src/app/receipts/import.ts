@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getDefaultStore } from "@/lib/context";
 import { parseAndValidate } from "@/services/ReceiptImportService";
+import { applyMatching } from "@/app/receipts/match";
 
 // Receipt import core (phase2-receipts-spec.md §6.1 / M1). Plain module (like grocery-list/
 // restock.ts and complete.ts) so it is unit/integration testable; the "use server" action in
@@ -74,12 +75,22 @@ export async function importReceipt(
             quantity: l.quantity,
             unitPrice: l.unitPrice,
             lineTotal: l.lineTotal,
-            // matchStatus defaults to `unmatched`; matching happens in M2.
+            // matchStatus defaults to `unmatched`; applyMatching (below) sets it immediately.
           })),
         },
       },
       select: { id: true },
     });
+    // M2: auto-match lines now so the review queue is populated immediately (and import_status is
+    // reconciled — a receipt whose lines all auto-match lands as `completed`). Matching must never
+    // fail the import: the receipt is already persisted, and a matching error would otherwise be
+    // reported as an import error while the saved receipt blocks any re-import as a duplicate. On
+    // failure the lines stay matchable in the review queue.
+    try {
+      await applyMatching(created.id);
+    } catch (matchErr) {
+      console.error(`Receipt ${created.id} imported but auto-matching failed:`, matchErr);
+    }
     return { status: "imported", receiptId: created.id, warnings };
   } catch (e: unknown) {
     // P2002 = unique constraint → race-condition duplicate
