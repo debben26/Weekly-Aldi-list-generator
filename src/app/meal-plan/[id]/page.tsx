@@ -5,6 +5,7 @@ import { getDefaultHousehold } from "@/lib/context";
 import { getRankedSuggestions } from "../data";
 import { scaleIngredientQuantity } from "@/services/GroceryListGenerationService";
 import { addEntry, updateEntryServings, removeEntry } from "../actions";
+import { generateList } from "@/app/grocery-list/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +54,19 @@ export default async function MealPlanDetail({
         <h1 className="text-2xl font-semibold">
           Week of {plan.weekStartDate.toISOString().slice(0, 10)}
         </h1>
-        <Link href="/meal-plan" className="text-sm text-gray-500 hover:text-gray-900">
-          ← All plans
-        </Link>
+        <div className="flex items-center gap-2">
+          {plan.entries.length > 0 ? (
+            <form action={generateList}>
+              <input type="hidden" name="mealPlanId" value={plan.id} />
+              <button className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700">
+                Generate grocery list
+              </button>
+            </form>
+          ) : null}
+          <Link href="/meal-plan" className="text-sm text-gray-500 hover:text-gray-900">
+            ← All plans
+          </Link>
+        </div>
       </div>
 
       {error ? (

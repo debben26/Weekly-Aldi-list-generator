@@ -9,6 +9,7 @@ import {
 export type RestockSuggestion = {
   rule: {
     id: string;
+    itemId: string;
     itemName: string;
     defaultQuantity: number | null;
     defaultUnit: string | null;
@@ -58,6 +59,7 @@ export async function getRestockSuggestions(today = new Date()): Promise<Restock
     return {
       rule: {
         id: r.id,
+        itemId: r.itemId,
         itemName: r.item.canonicalName,
         defaultQuantity: r.defaultQuantity,
         defaultUnit: r.defaultUnit,

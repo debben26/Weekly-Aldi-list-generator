@@ -30,3 +30,18 @@ body {
     @apply w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 outline-none focus:border-gray-500;
   }
 }
+
+/* Printable checklist (spec 6.12): hide app chrome, clean on US letter. */
+@media print {
+  nav,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  body {
+    background: #fff;
+  }
+}

@@ -1,0 +1,94 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { generateFromMealPlan } from "./generate";
+
+function num(v: FormDataEntryValue | null): number | null {
+  const s = String(v ?? "").trim();
+  if (s === "") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+export async function generateList(formData: FormData) {
+  const mealPlanId = String(formData.get("mealPlanId") ?? "");
+  if (!mealPlanId) redirect(`/grocery-list?error=${encodeURIComponent("Choose a meal plan.")}`);
+  const listId = await generateFromMealPlan(mealPlanId);
+  redirect(`/grocery-list/${listId}`);
+}
+
+export async function updateListItem(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const listId = String(formData.get("listId") ?? "");
+  await prisma.shoppingListItem.update({
+    where: { id },
+    data: {
+      quantity: num(formData.get("quantity")),
+      unit: String(formData.get("unit") ?? "").trim() || null,
+      sectionId: String(formData.get("sectionId") ?? "") || null,
+      notes: String(formData.get("notes") ?? "").trim() || null,
+      estimatedPrice: num(formData.get("estimatedPrice")),
+      paidPrice: num(formData.get("paidPrice")),
+    },
+  });
+  revalidatePath(`/grocery-list/${listId}`);
+}
+
+export async function toggleChecked(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const listId = String(formData.get("listId") ?? "");
+  const checked = String(formData.get("checked") ?? "") === "true";
+  await prisma.shoppingListItem.update({ where: { id }, data: { checked } });
+  revalidatePath(`/grocery-list/${listId}`);
+}
+
+export async function removeListItem(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const listId = String(formData.get("listId") ?? "");
+  await prisma.shoppingListItem.delete({ where: { id } });
+  revalidatePath(`/grocery-list/${listId}`);
+}
+
+export async function addManualItem(formData: FormData) {
+  const listId = String(formData.get("listId") ?? "");
+  const displayName = String(formData.get("displayName") ?? "").trim();
+  if (!displayName) {
+    redirect(`/grocery-list/${listId}?error=${encodeURIComponent("Item name is required.")}`);
+  }
+  await prisma.shoppingListItem.create({
+    data: {
+      shoppingListId: listId,
+      displayName,
+      quantity: num(formData.get("quantity")),
+      unit: String(formData.get("unit") ?? "").trim() || null,
+      sectionId: String(formData.get("sectionId") ?? "") || null,
+      sourceSummary: "Manual",
+      sources: { create: [{ sourceType: "manual", quantity: num(formData.get("quantity")), unit: String(formData.get("unit") ?? "").trim() || null }] },
+    },
+  });
+  revalidatePath(`/grocery-list/${listId}`);
+}
+
+// Add a restock rule's item to the list (spec 6.4: one-action add).
+export async function addRestockToList(formData: FormData) {
+  const listId = String(formData.get("listId") ?? "");
+  const ruleId = String(formData.get("ruleId") ?? "");
+  const rule = await prisma.stapleRule.findUnique({ where: { id: ruleId }, include: { item: true } });
+  if (!rule) redirect(`/grocery-list/${listId}?error=${encodeURIComponent("Restock rule not found.")}`);
+
+  await prisma.shoppingListItem.create({
+    data: {
+      shoppingListId: listId,
+      itemId: rule.itemId,
+      displayName: rule.item.canonicalName,
+      quantity: rule.defaultQuantity,
+      unit: rule.defaultUnit ?? rule.item.purchaseUnit,
+      sectionId: rule.defaultSectionId ?? rule.item.defaultSectionId,
+      sourceSummary: "Restock",
+      sources: { create: [{ sourceType: "restock", quantity: rule.defaultQuantity, unit: rule.defaultUnit ?? rule.item.purchaseUnit }] },
+    },
+  });
+  revalidatePath(`/grocery-list/${listId}`);
+}
