@@ -16,9 +16,6 @@ export default async function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">This Week</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Foundation is seeded and ready. The weekly planning flow arrives across M3–M6.
-        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
