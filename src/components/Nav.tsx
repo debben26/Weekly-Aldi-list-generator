@@ -11,6 +11,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/recipes", label: "Recipes" },
   { href: "/staples", label: "Staples & Restock" },
   { href: "/pantry", label: "Pantry" },
+  { href: "/receipts", label: "Receipts" },
   { href: "/items", label: "Items" },
   { href: "/store-layout", label: "Store Layout" },
   { href: "/history", label: "History" },
