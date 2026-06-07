@@ -79,7 +79,14 @@ export default async function GroceryListDetail({
 
   const estTotal = list.items.reduce((t, i) => t + (i.estimatedPrice ? Number(i.estimatedPrice) : 0), 0);
   const checkedCount = list.items.filter((i) => i.checked).length;
-  const inList = new Set(list.items.map((i) => i.itemId).filter(Boolean));
+  // Disable a restock add only when that item's row already carries a restock source — an item
+  // present merely as a staple/recipe ingredient can still have restock provenance added (6.10/6.11).
+  const restockedItems = new Set(
+    list.items
+      .filter((i) => i.sources.some((s) => s.sourceType === "restock"))
+      .map((i) => i.itemId)
+      .filter(Boolean),
+  );
   const dueRestock = restock.filter(
     (r) => (r.evaluation.state === "due" || r.evaluation.state === "maybe_due"),
   );
@@ -249,7 +256,7 @@ export default async function GroceryListDetail({
                   <input type="hidden" name="listId" value={list.id} />
                   <input type="hidden" name="ruleId" value={r.rule.id} />
                   <button
-                    disabled={inList.has(r.rule.itemId)}
+                    disabled={restockedItems.has(r.rule.itemId)}
                     className="rounded-full border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100 disabled:opacity-40"
                   >
                     + {r.rule.itemName} ({r.evaluation.state.replace("_", " ")})

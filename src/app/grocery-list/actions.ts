@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { generateFromMealPlan } from "./generate";
 import { completeTrip } from "./complete";
+import { addRestock } from "./restock";
 
 function num(v: FormDataEntryValue | null): number | null {
   const s = String(v ?? "").trim();
@@ -81,33 +82,11 @@ export async function addManualItem(formData: FormData) {
   revalidatePath(`/grocery-list/${listId}`);
 }
 
-// Add a restock rule's item to the list (spec 6.4: one-action add).
+// Add a restock rule's item to the list (spec 6.4: one-action add). See `addRestock` for the
+// provenance-preserving behavior when the item is already on the list.
 export async function addRestockToList(formData: FormData) {
   const listId = String(formData.get("listId") ?? "");
   const ruleId = String(formData.get("ruleId") ?? "");
-  const rule = await prisma.stapleRule.findUnique({ where: { id: ruleId }, include: { item: true } });
-  if (!rule) redirect(`/grocery-list/${listId}?error=${encodeURIComponent("Restock rule not found.")}`);
-
-  // Dedup: if the item is already on the list (e.g., as a weekly staple or a prior add), skip.
-  const existing = await prisma.shoppingListItem.findFirst({
-    where: { shoppingListId: listId, itemId: rule.itemId },
-  });
-  if (existing) {
-    revalidatePath(`/grocery-list/${listId}`);
-    return;
-  }
-
-  await prisma.shoppingListItem.create({
-    data: {
-      shoppingListId: listId,
-      itemId: rule.itemId,
-      displayName: rule.item.canonicalName,
-      quantity: rule.defaultQuantity,
-      unit: rule.defaultUnit ?? rule.item.purchaseUnit,
-      sectionId: rule.defaultSectionId ?? rule.item.defaultSectionId,
-      sourceSummary: "Restock",
-      sources: { create: [{ sourceType: "restock", quantity: rule.defaultQuantity, unit: rule.defaultUnit ?? rule.item.purchaseUnit }] },
-    },
-  });
+  await addRestock(listId, ruleId);
   revalidatePath(`/grocery-list/${listId}`);
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeUnitPrice, selectObservation } from "@/services/PriceObservationService";
+import { computeUnitPrice, priceObservations } from "@/services/PriceObservationService";
 
 describe("computeUnitPrice", () => {
   it("divides amount by quantity", () => {
@@ -12,14 +12,20 @@ describe("computeUnitPrice", () => {
   });
 });
 
-describe("selectObservation (spec 6.14 — estimated vs paid distinct)", () => {
-  it("prefers the paid price and labels it manual", () => {
-    expect(selectObservation(2.0, 2.5)).toEqual({ amount: 2.5, sourceType: "manual" });
+describe("priceObservations (spec 6.15 — estimated vs paid distinguishable)", () => {
+  it("records both when estimated and paid are present", () => {
+    expect(priceObservations(2.0, 2.5)).toEqual([
+      { amount: 2.0, sourceType: "estimated" },
+      { amount: 2.5, sourceType: "manual" },
+    ]);
   });
-  it("falls back to the estimate", () => {
-    expect(selectObservation(2.0, null)).toEqual({ amount: 2.0, sourceType: "estimated" });
+  it("records only an estimated observation when paid is missing", () => {
+    expect(priceObservations(2.0, null)).toEqual([{ amount: 2.0, sourceType: "estimated" }]);
   });
-  it("returns null when no price is known (never breaks completion)", () => {
-    expect(selectObservation(null, null)).toBeNull();
+  it("records only a manual observation when estimated is missing", () => {
+    expect(priceObservations(null, 2.5)).toEqual([{ amount: 2.5, sourceType: "manual" }]);
+  });
+  it("records nothing when no price is known (never breaks completion)", () => {
+    expect(priceObservations(null, null)).toEqual([]);
   });
 });

@@ -57,8 +57,16 @@ describe("completeTrip + snapshot immutability (spec 6.13 / 10.3)", () => {
               checked: true,
               estimatedPrice: 3.0,
               paidPrice: 3.5,
-              sourceSummary: "Weekly Staples",
-              sources: { create: [{ sourceType: "weekly_staple", quantity: 1, unit: "gallon" }] },
+              // Dual-role item: a weekly staple the user also marked as a restock purchase. The
+              // restock source is what allows the trip to bump last_purchased_date (new 8.2
+              // semantics — restock learns only from restock-labeled purchases).
+              sourceSummary: "Weekly Staples + Restock",
+              sources: {
+                create: [
+                  { sourceType: "weekly_staple", quantity: 1, unit: "gallon" },
+                  { sourceType: "restock", quantity: 1, unit: "gallon" },
+                ],
+              },
             },
           ],
         },
@@ -79,11 +87,13 @@ describe("completeTrip + snapshot immutability (spec 6.13 / 10.3)", () => {
     expect(snapItem.sectionName).toBe("Dairy");
     expect(snapItem.itemId).toBe(item.id); // analytics join retained
 
-    // A price observation was recorded (paid -> manual).
-    const obs = await prisma.priceObservation.findFirst({ where: { itemId: item.id } });
-    expect(obs).not.toBeNull();
-    expect(Number(obs!.amount)).toBe(3.5);
-    expect(obs!.sourceType).toBe("manual");
+    // Estimated and paid are recorded as SEPARATE observations (spec 6.15).
+    const obs = await prisma.priceObservation.findMany({ where: { itemId: item.id } });
+    expect(obs).toHaveLength(2);
+    const estObs = obs.find((o) => o.sourceType === "estimated");
+    const paidObs = obs.find((o) => o.sourceType === "manual");
+    expect(Number(estObs!.amount)).toBe(3.0);
+    expect(Number(paidObs!.amount)).toBe(3.5);
 
     // Restock last_purchased_date was bumped (real history feeds the engine).
     const updatedRule = await prisma.stapleRule.findUnique({ where: { id: rule.id } });

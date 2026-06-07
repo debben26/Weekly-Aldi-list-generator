@@ -4,7 +4,7 @@ import {
   tripTotals,
   type LiveListItem,
 } from "@/services/TripCompletionService";
-import { computeUnitPrice, selectObservation } from "@/services/PriceObservationService";
+import { computeUnitPrice, priceObservations } from "@/services/PriceObservationService";
 
 const SOURCE_LABELS: Record<string, string> = {
   weekly_staple: "Weekly Staples",
@@ -90,17 +90,19 @@ export async function completeTrip(listId: string): Promise<string> {
       if (!it.checked || !it.itemId) continue;
       const est = it.estimatedPrice != null ? Number(it.estimatedPrice) : null;
       const paid = it.paidPrice != null ? Number(it.paidPrice) : null;
-      const obs = selectObservation(est, paid);
-      if (!obs) continue;
-      priceObsData.push({
-        itemId: it.itemId,
-        storeId: list.storeId,
-        amount: obs.amount,
-        sourceType: obs.sourceType,
-        observedDate,
-        quantityBasis: it.quantity != null ? `${it.quantity} ${it.unit ?? ""}`.trim() : null,
-        unitPrice: computeUnitPrice(obs.amount, it.quantity),
-      });
+      // Record estimated and paid as separate observations so price history keeps them
+      // distinguishable (spec 6.15) — a line with both prices yields two rows.
+      for (const obs of priceObservations(est, paid)) {
+        priceObsData.push({
+          itemId: it.itemId,
+          storeId: list.storeId,
+          amount: obs.amount,
+          sourceType: obs.sourceType,
+          observedDate,
+          quantityBasis: it.quantity != null ? `${it.quantity} ${it.unit ?? ""}`.trim() : null,
+          unitPrice: computeUnitPrice(obs.amount, it.quantity),
+        });
+      }
     }
     if (priceObsData.length) {
       await tx.priceObservation.createMany({ data: priceObsData });

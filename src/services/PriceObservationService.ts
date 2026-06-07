@@ -12,14 +12,16 @@ export function computeUnitPrice(
   return amount / quantity;
 }
 
-// Choose the observation to record for a purchased line: the paid price (a real, manually
-// entered amount) when present, otherwise the estimate. Null when no price is known — missing
-// prices never break completion (spec 6.14).
-export function selectObservation(
+// Build the price observations to record for a purchased line. Estimated and paid are recorded
+// SEPARATELY (spec 6.15: price history must keep estimated vs paid distinguishable), so a line
+// with both prices yields two observations. Empty when no price is known — missing prices never
+// break completion (spec 6.14).
+export function priceObservations(
   estimatedPrice: number | null,
   paidPrice: number | null,
-): { amount: number; sourceType: PriceSourceType } | null {
-  if (paidPrice != null) return { amount: paidPrice, sourceType: "manual" };
-  if (estimatedPrice != null) return { amount: estimatedPrice, sourceType: "estimated" };
-  return null;
+): { amount: number; sourceType: PriceSourceType }[] {
+  const out: { amount: number; sourceType: PriceSourceType }[] = [];
+  if (estimatedPrice != null) out.push({ amount: estimatedPrice, sourceType: "estimated" });
+  if (paidPrice != null) out.push({ amount: paidPrice, sourceType: "manual" });
+  return out;
 }
