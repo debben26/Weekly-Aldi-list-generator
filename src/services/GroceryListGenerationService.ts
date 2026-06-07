@@ -25,3 +25,20 @@ export function isSuppressedByPantry(
 ): boolean {
   return status === "have" && !overridden;
 }
+
+/**
+ * Serving scaling (spec 8.1 step 3): multiply a scalable ingredient quantity by
+ * targetServings / baseServings. Non-scalable ingredients ("to taste", "1 pinch") and null
+ * quantities are left untouched. Returns null when the quantity is unknown.
+ */
+export function scaleIngredientQuantity(
+  quantity: number | null,
+  scalable: boolean,
+  baseServings: number,
+  targetServings: number,
+): number | null {
+  if (quantity == null) return null;
+  if (!scalable) return quantity;
+  if (!baseServings || baseServings <= 0) return quantity; // guard divide-by-zero
+  return (quantity * targetServings) / baseServings;
+}
