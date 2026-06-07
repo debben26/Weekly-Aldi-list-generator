@@ -25,6 +25,15 @@ const clean = {
 
 afterAll(async () => {
   if (createdReceiptIds.length) {
+    // M3: a line that auto-matched a seeded item may have written an observation; delete those
+    // (they survive line deletion via SetNull) before removing the receipts, to avoid orphans.
+    const lines = await prisma.receiptLineItem.findMany({
+      where: { receiptId: { in: createdReceiptIds } },
+      select: { id: true },
+    });
+    await prisma.priceObservation.deleteMany({
+      where: { receiptLineItemId: { in: lines.map((l) => l.id) } },
+    });
     await prisma.receipt.deleteMany({ where: { id: { in: createdReceiptIds } } }); // cascades lines
   }
   await prisma.$disconnect();

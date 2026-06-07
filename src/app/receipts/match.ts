@@ -4,6 +4,7 @@ import {
   AUTO_MATCH_THRESHOLD,
   type MatchCandidate,
 } from "@/services/MatchingService";
+import { syncLineObservation } from "@/app/receipts/observations";
 
 // Receipt matching DB layer (phase2-receipts-spec.md §6.2 / M2). Plain module (like import.ts) so
 // it is unit/integration testable. Loads catalog candidates, runs the pure MatchingService scorer
@@ -46,6 +47,9 @@ export async function applyMatching(receiptId: string): Promise<void> {
         matchStatus: autoMatched ? "auto_matched" : "needs_review",
       },
     });
+    // M3: auto-matched lines are real paid prices → write a receipt-sourced observation now
+    // (needs_review lines write none until the user confirms).
+    await syncLineObservation(line.id);
   }
 
   await recomputeImportStatus(receiptId);

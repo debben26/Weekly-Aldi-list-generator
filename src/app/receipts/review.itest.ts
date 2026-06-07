@@ -46,6 +46,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // M3: matched lines now write observations (FK on itemId, SetNull on line delete) → clear first.
+  await prisma.priceObservation.deleteMany({ where: { itemId: { in: itemIds } } });
   if (receiptIds.length) await prisma.receipt.deleteMany({ where: { id: { in: receiptIds } } });
   if (itemIds.length) await prisma.item.deleteMany({ where: { id: { in: itemIds } } }); // cascades aliases
   await prisma.$disconnect();
