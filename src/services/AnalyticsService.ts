@@ -5,10 +5,14 @@
 export const ANALYTICS_DEFAULT_WINDOW_MONTHS = 6;
 
 // Start of the analytics window (default 6 months back from `now`).
+// Uses UTC-based arithmetic to avoid two JS Date pitfalls:
+//   1. setMonth() month-end overflow: July 31 - 6 months → setMonth(1) (Feb) rolls to March 3.
+//   2. Local vs UTC mismatch: new Date(y,m,d) is local time; toISOString() is UTC.
 export function windowStart(now: Date, months: number = ANALYTICS_DEFAULT_WINDOW_MONTHS): Date {
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - months);
-  return d;
+  const y = now.getUTCFullYear();
+  const targetMonth = now.getUTCMonth() - months;
+  const daysInTarget = new Date(Date.UTC(y, targetMonth + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, targetMonth, Math.min(now.getUTCDate(), daysInTarget)));
 }
 
 export type SpendRow = { sectionName: string | null; paidPrice: number | null };

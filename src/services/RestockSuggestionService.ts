@@ -58,8 +58,10 @@ export function computeEffectiveInterval(input: {
     const sorted = [...input.purchaseDates].sort((a, b) => a.getTime() - b.getTime());
     const gaps: number[] = [];
     for (let i = 1; i < sorted.length; i++) gaps.push(daysBetween(sorted[i], sorted[i - 1]));
-    if (gaps.length > 0) {
-      return { intervalDays: median(gaps), source: "learned", obsCount };
+    const medianGap = gaps.length > 0 ? median(gaps) : 0;
+    if (medianGap > 0) {
+      // Guard: all purchases on the same day → median gap = 0 → would cause division by zero.
+      return { intervalDays: medianGap, source: "learned", obsCount };
     }
   }
 

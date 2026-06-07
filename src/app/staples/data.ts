@@ -31,11 +31,13 @@ export async function getRestockSuggestions(today = new Date()): Promise<Restock
     include: { item: { include: { defaultSection: true } }, defaultSection: true },
   });
 
-  // Purchase history for all restock items in one query (frozen trip lines).
+  // Purchase history for all restock items — only trips where the item was actually restocked
+  // (sourceLabels includes "Restock"). This prevents weekly-staple purchase frequency from
+  // inflating the learned cadence and overriding a longer restock interval.
   const itemIds = rules.map((r) => r.itemId);
   const snaps = itemIds.length
     ? await prisma.tripSnapshotItem.findMany({
-        where: { itemId: { in: itemIds }, checked: true },
+        where: { itemId: { in: itemIds }, checked: true, sourceLabels: { has: "Restock" } },
         include: { tripSnapshot: { select: { completedAt: true } } },
       })
     : [];

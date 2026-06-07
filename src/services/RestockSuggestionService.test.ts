@@ -146,6 +146,21 @@ describe("confidence (spec 8.2 step 5)", () => {
   });
 });
 
+describe("same-day purchase guard (division-by-zero defence)", () => {
+  it("falls back to manual interval when all purchase dates are the same day (median gap = 0)", () => {
+    // 3 purchases on the same day → gaps = [0, 0] → median = 0 → learned interval unusable.
+    // Should fall through to manual interval rather than dividing by zero.
+    const e = evalWith({
+      purchaseDates: [daysAgo(30), daysAgo(30), daysAgo(30)],
+      expectedIntervalDays: 30,
+      lastPurchasedDate: daysAgo(30),
+    });
+    expect(e.cadenceSource).toBe("manual");
+    expect(e.effectiveIntervalDays).toBe(30);
+    expect(Number.isFinite(e.ratio ?? 1)).toBe(true);
+  });
+});
+
 describe("determinism", () => {
   it("same input -> same output", () => {
     const input: RestockInput = {

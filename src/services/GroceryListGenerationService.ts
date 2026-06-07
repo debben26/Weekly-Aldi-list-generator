@@ -27,6 +27,18 @@ export function isSuppressedByPantry(
 }
 
 /**
+ * Section assignment (spec 8.1 step 10): item default section → Other / Unassigned fallback.
+ * Pure function over the in-memory lookups so it is independently testable.
+ */
+export function resolveSectionId(
+  itemId: string | null,
+  sectionByItem: Map<string, string | null>,
+  otherSectionId: string | null,
+): string | null {
+  return (itemId != null ? (sectionByItem.get(itemId) ?? null) : null) ?? otherSectionId ?? null;
+}
+
+/**
  * Serving scaling (spec 8.1 step 3): multiply a scalable ingredient quantity by
  * targetServings / baseServings. Non-scalable ingredients ("to taste", "1 pinch") and null
  * quantities are left untouched. Returns null when the quantity is unknown.

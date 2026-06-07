@@ -16,7 +16,10 @@ function num(v: FormDataEntryValue | null): number | null {
 export async function generateList(formData: FormData) {
   const mealPlanId = String(formData.get("mealPlanId") ?? "");
   if (!mealPlanId) redirect(`/grocery-list?error=${encodeURIComponent("Choose a meal plan.")}`);
-  const listId = await generateFromMealPlan(mealPlanId);
+  // pantryOverride fields carry item ids the user has explicitly opted to include despite
+  // their pantry status being "have" (spec 8.1 step 5 / 6.6 user override).
+  const overrideIds = formData.getAll("pantryOverride").map(String).filter(Boolean);
+  const listId = await generateFromMealPlan(mealPlanId, new Set(overrideIds));
   redirect(`/grocery-list/${listId}`);
 }
 
@@ -84,6 +87,15 @@ export async function addRestockToList(formData: FormData) {
   const ruleId = String(formData.get("ruleId") ?? "");
   const rule = await prisma.stapleRule.findUnique({ where: { id: ruleId }, include: { item: true } });
   if (!rule) redirect(`/grocery-list/${listId}?error=${encodeURIComponent("Restock rule not found.")}`);
+
+  // Dedup: if the item is already on the list (e.g., as a weekly staple or a prior add), skip.
+  const existing = await prisma.shoppingListItem.findFirst({
+    where: { shoppingListId: listId, itemId: rule.itemId },
+  });
+  if (existing) {
+    revalidatePath(`/grocery-list/${listId}`);
+    return;
+  }
 
   await prisma.shoppingListItem.create({
     data: {

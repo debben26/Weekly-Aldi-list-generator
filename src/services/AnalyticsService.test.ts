@@ -13,6 +13,15 @@ describe("windowStart (spec 6.15 — default 6 months)", () => {
     const start = windowStart(new Date("2026-06-15"));
     expect(start.toISOString().slice(0, 10)).toBe("2025-12-15");
   });
+
+  it("clamps to the last day of the target month (no JS setMonth overflow)", () => {
+    // July 31 - 6 months = January 31 (January has 31 days — no overflow)
+    expect(windowStart(new Date("2026-07-31")).toISOString().slice(0, 10)).toBe("2026-01-31");
+    // Aug 31 - 6 months = Feb 28 (Feb 2026 has 28 days; without fix would roll to Mar 3)
+    expect(windowStart(new Date("2026-08-31")).toISOString().slice(0, 10)).toBe("2026-02-28");
+    // Mar 31 - 6 months = Sep 30 (Sep has 30 days; without fix would roll to Oct 1)
+    expect(windowStart(new Date("2026-03-31")).toISOString().slice(0, 10)).toBe("2025-09-30");
+  });
 });
 
 describe("aggregateSpendBySection", () => {

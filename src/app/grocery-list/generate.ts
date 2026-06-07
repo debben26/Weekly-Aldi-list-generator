@@ -4,6 +4,7 @@ import { OTHER_SECTION_NAME } from "@/lib/constants";
 import {
   scaleIngredientQuantity,
   isSuppressedByPantry,
+  resolveSectionId,
 } from "@/services/GroceryListGenerationService";
 import {
   normalizeText,
@@ -13,10 +14,14 @@ import {
 } from "@/services/ItemMergeService";
 
 // Orchestrates spec 8.1: assemble contributions from active weekly staples + the meal plan's
-// scaled recipe ingredients, suppress pantry `have` items, resolve free text to item_id via
-// aliases (8.1b), merge (8.1a), then persist the ShoppingList with full source provenance.
-// Returns the new ShoppingList id. Regenerating replaces any existing list for that week.
-export async function generateFromMealPlan(mealPlanId: string): Promise<string> {
+// scaled recipe ingredients, suppress pantry `have` items (unless overridden), resolve free text
+// to item_id via aliases (8.1b), merge (8.1a), then persist the ShoppingList with full source
+// provenance. Returns the new ShoppingList id. Regenerating replaces any existing active list
+// for that week; a completed trip blocks regeneration to prevent duplicate history snapshots.
+export async function generateFromMealPlan(
+  mealPlanId: string,
+  overriddenItemIds: Set<string> = new Set(),
+): Promise<string> {
   const store = await getDefaultStore();
 
   const plan = await prisma.mealPlan.findUnique({
@@ -96,15 +101,35 @@ export async function generateFromMealPlan(mealPlanId: string): Promise<string> 
     }
   }
 
-  // 5. Pantry exclusion: drop contributions for items marked `have`.
+  // 5. Pantry exclusion: drop contributions for items marked `have` unless the user overrides.
   const kept = contributions.filter(
-    (c) => !(c.itemId && isSuppressedByPantry(pantryHave.has(c.itemId) ? "have" : null, false)),
+    (c) =>
+      !(
+        c.itemId &&
+        isSuppressedByPantry(pantryHave.has(c.itemId) ? "have" : null, overriddenItemIds.has(c.itemId))
+      ),
   );
 
   // 8. Merge
   const rows = mergeContributions(kept, itemInfoById);
 
-  // Replace any existing list for this household/store/week, then persist fresh.
+  // Guard: do not overwrite a completed trip — that would orphan the existing snapshot link
+  // and risk creating a duplicate history entry for the same week.
+  const completedList = await prisma.shoppingList.findFirst({
+    where: {
+      householdId: plan.householdId,
+      storeId: store.id,
+      weekStart: plan.weekStartDate,
+      status: "completed",
+    },
+  });
+  if (completedList) {
+    throw new Error(
+      "A completed trip already exists for this week. Complete a new week to generate a fresh list.",
+    );
+  }
+
+  // Replace any existing (non-completed) list for this household/store/week, then persist fresh.
   await prisma.shoppingList.deleteMany({
     where: { householdId: plan.householdId, storeId: store.id, weekStart: plan.weekStartDate },
   });
@@ -119,7 +144,7 @@ export async function generateFromMealPlan(mealPlanId: string): Promise<string> 
 
   for (const row of rows) {
     // 10. Section: item default -> Other / Unassigned.
-    const sectionId = (row.itemId ? sectionByItem.get(row.itemId) : null) ?? otherSection?.id ?? null;
+    const sectionId = resolveSectionId(row.itemId, sectionByItem, otherSection?.id ?? null);
     await prisma.shoppingListItem.create({
       data: {
         shoppingListId: list.id,

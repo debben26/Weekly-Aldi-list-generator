@@ -3,6 +3,7 @@ import {
   activeWeeklyStaples,
   isSuppressedByPantry,
   scaleIngredientQuantity,
+  resolveSectionId,
 } from "@/services/GroceryListGenerationService";
 
 describe("activeWeeklyStaples (spec 6.3 / 8.1)", () => {
@@ -39,6 +40,30 @@ describe("isSuppressedByPantry (spec 6.6 / 8.1 step 5)", () => {
     expect(isSuppressedByPantry("out", false)).toBe(false);
     expect(isSuppressedByPantry("unknown", false)).toBe(false);
     expect(isSuppressedByPantry(null, false)).toBe(false);
+  });
+});
+
+describe("resolveSectionId (spec 8.1 step 10 — route sort / Other/Unassigned fallback)", () => {
+  it("returns the item's default section when the item is in the map", () => {
+    const map = new Map([["item1", "sec-dairy"]]);
+    expect(resolveSectionId("item1", map, "sec-other")).toBe("sec-dairy");
+  });
+
+  it("falls back to Other/Unassigned section when the item has no section mapping", () => {
+    expect(resolveSectionId("item1", new Map(), "sec-other")).toBe("sec-other");
+  });
+
+  it("falls back to Other/Unassigned for free-text items with no item_id", () => {
+    const map = new Map([["item1", "sec-dairy"]]);
+    expect(resolveSectionId(null, map, "sec-other")).toBe("sec-other");
+  });
+
+  it("returns null when the item has no section and Other/Unassigned does not exist", () => {
+    expect(resolveSectionId("item1", new Map(), null)).toBeNull();
+  });
+
+  it("returns null for free-text item when Other/Unassigned does not exist", () => {
+    expect(resolveSectionId(null, new Map(), null)).toBeNull();
   });
 });
 

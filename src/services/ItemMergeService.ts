@@ -1,4 +1,5 @@
 // ItemMergeService — duplicate detection & quantity aggregation (spec 8.1a / 8.1b).
+import { dimensionForPurchaseUnit } from "@/services/UnitService";
 // `normalizeText` is the merge-key normalizer (also used to store aliases). `mergeContributions`
 // groups contributions and aggregates quantities without ever fabricating an uncomputable total.
 
@@ -96,11 +97,19 @@ function aggregate(
   if (purchaseUnit) {
     // Convert each contribution to purchase units: factor 1 if already in purchase units,
     // else a known recipe->purchase conversion, else not convertible.
+    const puDim = dimensionForPurchaseUnit(purchaseUnit);
     const converted = group.map((c) => {
       if (c.quantity == null) return null;
       if (c.unit === purchaseUnit) return c.quantity;
       const factor = info?.recipeToPurchase?.[c.unit ?? ""];
-      return factor != null ? c.quantity * factor : null;
+      if (factor == null) return null;
+      // Guard (spec 8.1a): if both units have a known, distinct dimension, they cannot be summed
+      // even if a recipeToPurchase entry happens to exist for both (data-entry error defence).
+      // Units that fall back to "package" (recipe units like cup/tbsp, or unknown units) are
+      // trusted to the explicit conversion factor and bypass this check.
+      const cDim = dimensionForPurchaseUnit(c.unit ?? "");
+      if (puDim !== "package" && cDim !== "package" && puDim !== cDim) return null;
+      return c.quantity * factor;
     });
     if (converted.every((v) => v != null)) {
       const total = converted.reduce<number>((a, b) => a + (b ?? 0), 0);
