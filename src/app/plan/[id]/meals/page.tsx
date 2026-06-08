@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { MEAL_COUNT_DEFAULT, MEAL_COUNT_MIN, MEAL_COUNT_MAX } from "@/services/MealPackageService";
 import { generatePackage, useTheseMeals } from "../actions";
 import MealCard from "./MealCard";
+import AddMealPanel from "./AddMealPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ export default async function MealsStep({
     where: { id: planId },
     include: {
       entries: {
+        // Stable order so swap/regenerate change only the affected card (Postgres has no implicit order).
+        orderBy: { id: "asc" },
         include: {
           recipe: {
             include: { ingredients: { include: { item: true }, orderBy: { position: "asc" } } },
@@ -30,10 +33,18 @@ export default async function MealsStep({
   });
   if (!plan) notFound();
 
-  // All saved recipes (id + title) power the in-card swap search (§6.4).
+  // Saved recipes power the in-card swap search and the "Add a meal" browser (§6.4); the sort fields
+  // mirror the Recipes tab.
   const savedRecipes = await prisma.recipe.findMany({
     where: { householdId: plan.householdId },
-    select: { id: true, title: true },
+    select: {
+      id: true,
+      title: true,
+      favorite: true,
+      proteinType: true,
+      complexity: true,
+      estPrice: true,
+    },
     orderBy: { title: "asc" },
   });
 
@@ -97,31 +108,19 @@ export default async function MealsStep({
         </section>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
             {meals.map((meal) => (
               <MealCard key={meal.entryId} planId={planId} meal={meal} savedRecipes={savedRecipes} />
             ))}
-          </div>
+          </ul>
+
+          <AddMealPanel
+            planId={planId}
+            savedRecipes={savedRecipes}
+            inPlanRecipeIds={meals.map((m) => m.recipeId)}
+          />
 
           <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <form action={generatePackage} className="mb-4 flex items-end gap-3 border-b border-gray-100 pb-4">
-              <input type="hidden" name="planId" value={planId} />
-              <label className="text-xs text-gray-500">
-                <span className="mb-0.5 block">Add more (target total)</span>
-                <input
-                  name="count"
-                  type="number"
-                  min={meals.length + 1}
-                  max={MEAL_COUNT_MAX}
-                  defaultValue={meals.length + 1}
-                  className="input w-24"
-                />
-              </label>
-              <button className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-100">
-                Add suggestion
-              </button>
-            </form>
-
             {prompt === "rebuild" ? (
               <div className="rounded border border-amber-200 bg-amber-50 p-3">
                 <p className="text-sm text-amber-800">

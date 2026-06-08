@@ -128,6 +128,24 @@ export async function swapMeal(formData: FormData) {
   revalidatePath(mealsPath(planId));
 }
 
+// Add a specific saved recipe to the package from the "Add a meal" browser (§6.4).
+export async function addMealToPlan(formData: FormData) {
+  const planId = String(formData.get("planId") ?? "");
+  const recipeId = String(formData.get("recipeId") ?? "");
+  if (!recipeId) redirect(mealsPath(planId));
+
+  const recipe = await prisma.recipe.findUnique({
+    where: { id: recipeId },
+    select: { baseServings: true },
+  });
+  if (!recipe) redirect(mealsPath(planId));
+
+  await prisma.mealPlanEntry.create({
+    data: { mealPlanId: planId, recipeId, targetServings: recipe!.baseServings },
+  });
+  revalidatePath(mealsPath(planId));
+}
+
 // Submit the package: require >=1 meal, build the draft grocery list, advance to staples (§7).
 // If a list already exists for the week, confirm before rebuilding (it would discard manual edits).
 export async function useTheseMeals(formData: FormData) {
@@ -197,6 +215,38 @@ export async function includeStaple(formData: FormData) {
       },
     });
   }
+  revalidatePath(`/plan/${planId}/staples`);
+}
+
+// Add a one-off item to this week's list from the Staples step. Not a recurring rule — it lives on
+// the draft list only and shows immediately on the step. Revalidates the staples route so it renders.
+export async function addStapleItem(formData: FormData) {
+  const planId = String(formData.get("planId") ?? "");
+  const listId = String(formData.get("listId") ?? "");
+  const displayName = String(formData.get("displayName") ?? "").trim();
+  if (!displayName) return;
+
+  const quantity = num(formData.get("quantity"));
+  const unit = String(formData.get("unit") ?? "").trim() || null;
+  await prisma.shoppingListItem.create({
+    data: {
+      shoppingListId: listId,
+      displayName,
+      quantity,
+      unit,
+      sectionId: String(formData.get("sectionId") ?? "") || null,
+      sourceSummary: "Manual",
+      sources: { create: [{ sourceType: "manual", quantity, unit }] },
+    },
+  });
+  revalidatePath(`/plan/${planId}/staples`);
+}
+
+// Remove a one-off item added on the Staples step (delete the row by id).
+export async function removeStapleItem(formData: FormData) {
+  const planId = String(formData.get("planId") ?? "");
+  const id = String(formData.get("id") ?? "");
+  await prisma.shoppingListItem.delete({ where: { id } });
   revalidatePath(`/plan/${planId}/staples`);
 }
 

@@ -217,6 +217,11 @@ model Recipe {
   favorite      Boolean       @default(false)
   aldiFitStatus AldiFitStatus @default(unknown) // derived (8.4)
 
+  // Manual sort keys surfaced on the recipes list.
+  proteinType String? // e.g. "chicken", "beef", "turkey"
+  complexity  Int? // 1 (easy) – 5 (hard)
+  estPrice    Float? // manual cost estimate
+
   // future hub fields (5.8) — present, unused in Phase 1
   visibility       String  @default("private")
   ownerUserId      String?

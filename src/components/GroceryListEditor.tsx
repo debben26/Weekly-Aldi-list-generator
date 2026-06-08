@@ -13,20 +13,9 @@ import {
   finalizeTrip,
 } from "@/app/grocery-list/actions";
 
-const SOURCE_LABELS: Record<string, string> = {
-  weekly_staple: "Weekly Staples",
-  restock: "Restock",
-  pantry_review: "Pantry",
-  manual: "Manual",
-  recipe: "Recipe",
-};
-
 function fmtQ(n: number | null): string {
   if (n == null) return "";
   return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
-}
-function money(d: { toString(): string } | null): string {
-  return d == null ? "" : Number(d.toString()).toFixed(2);
 }
 
 // Section-grouped grocery list editor: check off, edit, remove, add manual items, add due restock,
@@ -54,26 +43,14 @@ export default async function GroceryListEditor({
     estimateListOrder(list.id),
   ]);
 
-  // Recipe titles for source labels.
-  const recipeIds = [
-    ...new Set(list.items.flatMap((i) => i.sources.map((s) => s.recipeId).filter(Boolean))),
-  ] as string[];
-  const recipeTitles = new Map(
-    (await prisma.recipe.findMany({ where: { id: { in: recipeIds } }, select: { id: true, title: true } })).map(
-      (r) => [r.id, r.title],
-    ),
-  );
-  const labelFor = (s: { recipeId: string | null; sourceType: string }) =>
-    s.recipeId ? (recipeTitles.get(s.recipeId) ?? "Recipe") : SOURCE_LABELS[s.sourceType];
-
   // Group items by section in route order; unknown/null section -> a trailing bucket.
   const sectionOrder = new Map(sections.map((s, i) => [s.id, i]));
-  const groups = new Map<string, { name: string; sort: number; items: typeof list.items }>();
+  const groups = new Map<string, { id: string; name: string; sort: number; items: typeof list.items }>();
   for (const it of list.items) {
     const key = it.sectionId ?? "none";
     const name = it.section?.name ?? "Other / Unassigned";
     const sort = it.sectionId ? (sectionOrder.get(it.sectionId) ?? 9999) : 10000;
-    if (!groups.has(key)) groups.set(key, { name, sort, items: [] });
+    if (!groups.has(key)) groups.set(key, { id: key, name, sort, items: [] });
     groups.get(key)!.items.push(it);
   }
   const orderedGroups = [...groups.values()].sort((a, b) => a.sort - b.sort);
@@ -140,81 +117,62 @@ export default async function GroceryListEditor({
       ) : null}
 
       {orderedGroups.map((g) => (
-        <section key={g.name} className="rounded-lg border border-gray-200 bg-white">
+        <section key={g.id} className="rounded-lg border border-gray-200 bg-white">
           <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
             {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
           </h2>
           <ul className="divide-y divide-gray-50">
             {g.items.map((it) => {
-              const breakdown =
-                it.quantity == null && it.sources.length > 0
-                  ? it.sources
-                      .map((s) => `${fmtQ(s.quantity)} ${s.unit ?? ""} [${labelFor(s)}]`.replace(/\s+/g, " ").trim())
-                      .join(" + ")
-                  : null;
+              // Plain quantity text — no dash, no "needs:", no source labels. Falls back to the
+              // first source's unit when the row has no merged total (e.g. "bag").
+              const src = it.sources[0];
+              const qtyText =
+                it.quantity != null
+                  ? `${fmtQ(it.quantity)} ${it.unit ?? ""}`.trim()
+                  : src
+                    ? `${fmtQ(src.quantity)} ${src.unit ?? ""}`.trim()
+                    : "";
               return (
-                <li key={it.id} className="px-4 py-2">
-                  <div className="flex items-center gap-3">
-                    <form action={toggleChecked}>
-                      <input type="hidden" name="id" value={it.id} />
-                      <input type="hidden" name="listId" value={list.id} />
-                      <input type="hidden" name="checked" value={it.checked ? "false" : "true"} />
-                      <button className="text-lg leading-none" aria-label="toggle checked">
-                        {it.checked ? "☑" : "☐"}
-                      </button>
-                    </form>
-                    <span className={`flex-1 text-sm ${it.checked ? "text-gray-400 line-through" : ""}`}>
-                      <span className="font-medium">{it.displayName}</span>{" "}
-                      {it.quantity != null ? (
-                        <span className="text-gray-600">
-                          — {fmtQ(it.quantity)} {it.unit ?? ""}
-                        </span>
-                      ) : breakdown ? (
-                        <span className="text-amber-700">— needs: {breakdown}</span>
-                      ) : null}
-                      <span className="ml-2 text-xs text-gray-400">{it.sourceSummary}</span>
-                    </span>
-                  </div>
+                <li key={it.id} className="flex flex-wrap items-center gap-2 px-4 py-2">
+                  <form action={toggleChecked}>
+                    <input type="hidden" name="id" value={it.id} />
+                    <input type="hidden" name="listId" value={list.id} />
+                    <input type="hidden" name="checked" value={it.checked ? "false" : "true"} />
+                    <button className="text-lg leading-none" aria-label="toggle checked">
+                      {it.checked ? "☑" : "☐"}
+                    </button>
+                  </form>
+                  <span
+                    className={`w-56 shrink-0 truncate text-sm ${
+                      it.checked ? "text-gray-400 line-through" : ""
+                    }`}
+                  >
+                    <span className="font-medium">{it.displayName}</span>
+                    {qtyText ? <span className="ml-1 text-gray-500">{qtyText}</span> : null}
+                  </span>
 
-                  <details className="ml-9 mt-1">
-                    <summary className="cursor-pointer text-xs text-gray-400">edit</summary>
-                    <form action={updateListItem} className="mt-2 flex flex-wrap items-end gap-2">
-                      <input type="hidden" name="id" value={it.id} />
-                      <input type="hidden" name="listId" value={list.id} />
-                      <L label="Qty">
-                        <input name="quantity" type="number" step="any" defaultValue={it.quantity ?? ""} className="input w-20" />
-                      </L>
-                      <L label="Unit">
-                        <input name="unit" defaultValue={it.unit ?? ""} className="input w-24" />
-                      </L>
-                      <L label="Section">
-                        <select name="sectionId" defaultValue={it.sectionId ?? ""} className="input w-40">
-                          <option value="">— Other / Unassigned —</option>
-                          {sections.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
-                            </option>
-                          ))}
-                        </select>
-                      </L>
-                      <L label="Est $">
-                        <input name="estimatedPrice" type="number" step="0.01" defaultValue={money(it.estimatedPrice)} className="input w-20" />
-                      </L>
-                      <L label="Paid $">
-                        <input name="paidPrice" type="number" step="0.01" defaultValue={money(it.paidPrice)} className="input w-20" />
-                      </L>
-                      <L label="Notes">
-                        <input name="notes" defaultValue={it.notes ?? ""} className="input w-40" />
-                      </L>
-                      <button className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-100">Save</button>
-                      <button
-                        formAction={removeListItem}
-                        className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                      >
-                        Remove
-                      </button>
-                    </form>
-                  </details>
+                  <form action={updateListItem} className="flex flex-wrap items-center gap-1.5">
+                    <input type="hidden" name="id" value={it.id} />
+                    <input type="hidden" name="listId" value={list.id} />
+                    <input name="quantity" type="number" step="any" defaultValue={it.quantity ?? ""} placeholder="qty" className="input w-14" />
+                    <input name="unit" defaultValue={it.unit ?? ""} placeholder="unit" className="input w-16" />
+                    <select name="sectionId" defaultValue={it.sectionId ?? ""} className="input w-32">
+                      <option value="">— Other —</option>
+                      {sections.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input name="notes" defaultValue={it.notes ?? ""} placeholder="notes" className="input w-28" />
+                    <button className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-100">Save</button>
+                    <button
+                      formAction={removeListItem}
+                      className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                    >
+                      Remove
+                    </button>
+                  </form>
                 </li>
               );
             })}
@@ -238,7 +196,7 @@ export default async function GroceryListEditor({
           </L>
           <L label="Section">
             <select name="sectionId" className="input w-40" defaultValue="">
-              <option value="">— Other / Unassigned —</option>
+              <option value="">— Other —</option>
               {sections.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}

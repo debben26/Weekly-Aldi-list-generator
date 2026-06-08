@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { addManualItem } from "@/app/grocery-list/actions";
 import { getPlanWithList } from "../data";
-import { includeStaple, excludeStaple } from "../actions";
+import { includeStaple, excludeStaple, addStapleItem, removeStapleItem } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +38,10 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
   ]);
 
   const onList = new Set(list.items.map((i) => i.itemId).filter(Boolean) as string[]);
+  // One-off items added on this step (purely manual provenance) — shown so they appear right away.
+  const added = list.items.filter(
+    (i) => i.sources.length > 0 && i.sources.every((s) => s.sourceType === "manual"),
+  );
 
   return (
     <div className="space-y-5">
@@ -57,7 +60,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
             {staples.map((s) => {
               const included = onList.has(s.itemId);
               return (
-                <li key={s.id} className="flex items-center justify-between px-4 py-2">
+                <li key={s.id} className="flex items-center gap-3 px-4 py-2">
                   <span className={`text-sm ${included ? "" : "text-gray-400"}`}>
                     {s.item.canonicalName}
                     {s.defaultQuantity ? (
@@ -92,9 +95,39 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
         )}
       </section>
 
+      {added.length > 0 ? (
+        <section className="rounded-lg border border-gray-200 bg-white">
+          <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
+            Added this week
+          </h2>
+          <ul className="divide-y divide-gray-50">
+            {added.map((i) => (
+              <li key={i.id} className="flex items-center gap-3 px-4 py-2">
+                <span className="text-sm">
+                  {i.displayName}
+                  {i.quantity != null || i.unit ? (
+                    <span className="ml-2 text-xs text-gray-400">
+                      {[i.quantity, i.unit].filter(Boolean).join(" ")}
+                    </span>
+                  ) : null}
+                </span>
+                <form action={removeStapleItem}>
+                  <input type="hidden" name="planId" value={planId} />
+                  <input type="hidden" name="id" value={i.id} />
+                  <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
+                    Remove
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="mb-2 font-semibold">Add an item</h2>
-        <form action={addManualItem} className="flex flex-wrap items-end gap-2">
+        <form action={addStapleItem} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="planId" value={planId} />
           <input type="hidden" name="listId" value={list.id} />
           <label className="text-xs text-gray-500">
             <span className="mb-0.5 block">Name *</span>
@@ -111,7 +144,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
           <label className="text-xs text-gray-500">
             <span className="mb-0.5 block">Section</span>
             <select name="sectionId" className="input w-40" defaultValue="">
-              <option value="">— Other / Unassigned —</option>
+              <option value="">— Other —</option>
               {sections.map((sec) => (
                 <option key={sec.id} value={sec.id}>
                   {sec.name}

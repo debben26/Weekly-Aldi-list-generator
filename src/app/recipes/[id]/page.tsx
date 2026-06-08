@@ -165,6 +165,10 @@ export default async function EditRecipePage({
             </select>
           </label>
           <label className="text-xs text-gray-500">
+            or new item
+            <input name="newItemName" className="input mt-0.5 w-40" placeholder="adds to catalog" />
+          </label>
+          <label className="text-xs text-gray-500">
             Qty
             <input name="quantity" type="number" step="any" className="input mt-0.5 w-20" />
           </label>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold } from "@/lib/context";
+import { findOrCreateItem } from "@/lib/items";
 import { computeAldiFit } from "@/services/MealSuggestionService";
 
 export type RecipeFormState = { error?: string };
@@ -35,6 +36,12 @@ function recipeData(formData: FormData) {
     prepTime: num(formData.get("prepTime")),
     cookTime: num(formData.get("cookTime")),
     favorite: formData.get("favorite") === "on",
+    proteinType: String(formData.get("proteinType") ?? "").trim() || null,
+    complexity: (() => {
+      const n = num(formData.get("complexity"));
+      return n == null ? null : Math.round(n);
+    })(),
+    estPrice: num(formData.get("estPrice")),
   };
 }
 
@@ -73,6 +80,12 @@ export async function addIngredient(formData: FormData) {
   if (!recipeId) return;
   if (!rawText) redirect(`/recipes/${recipeId}?error=${encodeURIComponent("Ingredient text is required.")}`);
 
+  // A typed-in name creates (or reuses) a catalog item and maps to it; otherwise use the picker.
+  const newItemName = String(formData.get("newItemName") ?? "").trim();
+  const itemId = newItemName
+    ? await findOrCreateItem(newItemName)
+    : String(formData.get("itemId") ?? "") || null;
+
   const last = await prisma.recipeIngredient.findFirst({
     where: { recipeId },
     orderBy: { position: "desc" },
@@ -81,7 +94,7 @@ export async function addIngredient(formData: FormData) {
     data: {
       recipeId,
       rawText,
-      itemId: String(formData.get("itemId") ?? "") || null,
+      itemId,
       quantity: num(formData.get("quantity")),
       recipeUnit: String(formData.get("recipeUnit") ?? "").trim() || null,
       optional: formData.get("optional") === "on",
