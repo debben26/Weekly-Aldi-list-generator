@@ -40,8 +40,6 @@ export async function updateListItem(formData: FormData) {
       unit: String(formData.get("unit") ?? "").trim() || null,
       sectionId: String(formData.get("sectionId") ?? "") || null,
       notes: String(formData.get("notes") ?? "").trim() || null,
-      estimatedPrice: num(formData.get("estimatedPrice")),
-      paidPrice: num(formData.get("paidPrice")),
     },
   });
   revalidatePath(`/grocery-list/${listId}`);

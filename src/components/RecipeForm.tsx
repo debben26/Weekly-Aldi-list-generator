@@ -12,6 +12,9 @@ type RecipeValues = {
   prepTime?: number | null;
   cookTime?: number | null;
   favorite?: boolean;
+  proteinType?: string | null;
+  complexity?: number | null;
+  estPrice?: number | null;
 };
 
 export default function RecipeForm({
@@ -66,6 +69,40 @@ export default function RecipeForm({
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-gray-700">Cook (min)</span>
           <input name="cookTime" type="number" defaultValue={recipe?.cookTime ?? ""} className="input" />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-700">Protein</span>
+          <input
+            name="proteinType"
+            defaultValue={recipe?.proteinType ?? ""}
+            className="input"
+            placeholder="e.g. chicken"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-700">Complexity (1–5)</span>
+          <input
+            name="complexity"
+            type="number"
+            min={1}
+            max={5}
+            defaultValue={recipe?.complexity ?? ""}
+            className="input"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-700">Est. price</span>
+          <input
+            name="estPrice"
+            type="number"
+            step="0.01"
+            min={0}
+            defaultValue={recipe?.estPrice ?? ""}
+            className="input"
+          />
         </label>
       </div>
 

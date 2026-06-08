@@ -79,7 +79,7 @@ export default async function StaplesPage({
         <form action={createStapleRule} className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <label className="col-span-2 block md:col-span-1">
             <span className="mb-1 block text-xs text-gray-500">Item *</span>
-            <select name="itemId" required className="input">
+            <select name="itemId" className="input">
               <option value="">— choose —</option>
               {items.map((i) => (
                 <option key={i.id} value={i.id}>
@@ -87,6 +87,10 @@ export default async function StaplesPage({
                 </option>
               ))}
             </select>
+          </label>
+          <label className="col-span-2 block md:col-span-1">
+            <span className="mb-1 block text-xs text-gray-500">or new item</span>
+            <input name="newItemName" className="input" placeholder="adds to catalog" />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs text-gray-500">Type *</span>

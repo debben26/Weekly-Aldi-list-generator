@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold } from "@/lib/context";
+import { findOrCreateItem } from "@/lib/items";
 
 function backWithError(message: string): never {
   redirect(`/staples?error=${encodeURIComponent(message)}`);
@@ -29,9 +30,13 @@ function todayDateOnly(): Date {
 }
 
 export async function createStapleRule(formData: FormData) {
-  const itemId = String(formData.get("itemId") ?? "");
   const ruleType = String(formData.get("ruleType") ?? "");
-  if (!itemId) backWithError("Choose an item.");
+  // A typed-in name creates (or reuses) a catalog item; otherwise use the picker selection.
+  const newItemName = String(formData.get("newItemName") ?? "").trim();
+  const itemId = newItemName
+    ? await findOrCreateItem(newItemName)
+    : String(formData.get("itemId") ?? "");
+  if (!itemId) backWithError("Choose an item or add a new one.");
   if (ruleType !== "weekly" && ruleType !== "restock") backWithError("Invalid rule type.");
 
   const household = await getDefaultHousehold();
