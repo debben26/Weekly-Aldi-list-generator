@@ -71,6 +71,22 @@ enum PriceSourceType {
   historical_average
   future_receipt
   future_api
+  receipt // Phase 2: a real PAID price observed from an imported receipt line.
+}
+
+// ---------- Phase 2 — Receipt import (phase2-receipts-spec.md §5) ----------
+
+enum ReceiptImportStatus {
+  pending_review // imported; some lines still need matching
+  completed // no lines left in needs_review
+}
+
+enum ReceiptLineMatchStatus {
+  auto_matched // matched at confidence >= 0.85
+  confirmed // user confirmed a match (teaches an alias)
+  needs_review // matched below threshold; waiting on the user
+  unmatched // no candidate / not yet matched
+  new_item // user created a new item for this line
 }
 
 // ---------- 5.1 Identity & Household ----------
@@ -122,6 +138,7 @@ model Store {
   sections          StoreSection[]
   shoppingLists     ShoppingList[]
   priceObservations PriceObservation[]
+  receipts          Receipt[]
 }
 
 model StoreSection {
@@ -146,6 +163,7 @@ model Item {
   id               String  @id @default(cuid())
   canonicalName    String  @unique
   food             Boolean @default(true)
+  taxable          Boolean @default(false) // grocery tax flag (8.3): food exempt, non-food taxable
   aldiFriendly     Boolean @default(true)
   defaultSectionId String?
   notes            String?
@@ -173,6 +191,7 @@ model Item {
   shoppingListItems ShoppingListItem[]
   priceObservations PriceObservation[]
   retailerProducts  RetailerProduct[]
+  receiptLineItems  ReceiptLineItem[] // Phase 2: receipt lines matched to this item
 }
 
 model ItemAlias {
@@ -406,10 +425,59 @@ model PriceObservation {
   confidence    String?
   notes         String?
 
-  item  Item  @relation(fields: [itemId], references: [id])
-  store Store @relation(fields: [storeId], references: [id])
+  // Phase 2: link a receipt-sourced (paid) observation back to its receipt line.
+  receiptLineItemId String?
+
+  item            Item             @relation(fields: [itemId], references: [id])
+  store           Store            @relation(fields: [storeId], references: [id])
+  receiptLineItem ReceiptLineItem? @relation(fields: [receiptLineItemId], references: [id], onDelete: SetNull)
 
   @@index([itemId, observedDate])
+}
+
+// ---------- Phase 2 — Receipts (phase2-receipts-spec.md §5) ----------
+
+// An imported receipt. raw_import_json is preserved VERBATIM (§0.8 / §10) even after matching.
+// dedupeHash blocks importing the same receipt twice (§7.2).
+model Receipt {
+  id           String              @id @default(cuid())
+  storeId      String
+  purchaseDate DateTime            @db.Date
+  currency     String              @default("USD")
+  subtotal     Decimal?            @db.Decimal(10, 2)
+  tax          Decimal?            @db.Decimal(10, 2)
+  total        Decimal             @db.Decimal(10, 2)
+  rawImportJson Json // the original uploaded JSON, preserved verbatim
+  importStatus ReceiptImportStatus @default(pending_review)
+  dedupeHash   String              @unique // hash(store + purchase_date + total)
+  createdAt    DateTime            @default(now())
+
+  store Store             @relation(fields: [storeId], references: [id])
+  lines ReceiptLineItem[]
+
+  @@index([storeId, purchaseDate])
+}
+
+// One parsed receipt line. rawName is kept verbatim; normalizedName drives matching + alias
+// learning. unitPrice is derived (line_total / quantity) when the chat omits it.
+model ReceiptLineItem {
+  id             String                 @id @default(cuid())
+  receiptId      String
+  rawName        String // verbatim from the chat output
+  normalizedName String // derived via normalizeText
+  quantity       Float
+  unitPrice      Decimal?               @db.Decimal(10, 4)
+  lineTotal      Decimal                @db.Decimal(10, 2)
+  matchedItemId  String?
+  matchConfidence Float?
+  matchStatus    ReceiptLineMatchStatus @default(unmatched)
+
+  receipt           Receipt            @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  matchedItem       Item?              @relation(fields: [matchedItemId], references: [id], onDelete: SetNull)
+  priceObservations PriceObservation[]
+
+  @@index([receiptId])
+  @@index([normalizedName])
 }
 
 // ---------- 5.8 Future-ready (present, unused in Phase 1) ----------

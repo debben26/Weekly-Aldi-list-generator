@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getRestockSuggestions } from "@/app/staples/data";
+import { estimateListOrder } from "@/app/grocery-list/estimate";
+import OrderEstimatePanel from "@/components/OrderEstimatePanel";
 import {
   updateListItem,
   toggleChecked,
@@ -48,9 +50,10 @@ export default async function GroceryListDetail({
   });
   if (!list) notFound();
 
-  const [sections, restock] = await Promise.all([
+  const [sections, restock, orderEstimate] = await Promise.all([
     prisma.storeSection.findMany({ where: { storeId: list.storeId }, orderBy: { sortOrder: "asc" } }),
     getRestockSuggestions(),
+    estimateListOrder(list.id),
   ]);
 
   // Recipe titles for source labels.
@@ -132,6 +135,10 @@ export default async function GroceryListDetail({
         <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
+      ) : null}
+
+      {orderEstimate && orderEstimate.totalLines > 0 ? (
+        <OrderEstimatePanel estimate={orderEstimate} />
       ) : null}
 
       {orderedGroups.map((g) => (

@@ -68,6 +68,8 @@ async function main() {
         purchaseUnit: entry.purchaseUnit,
         dimension: dimensionForPurchaseUnit(entry.purchaseUnit),
         aldiFriendly: entry.aldiFriendly,
+        food: entry.food ?? true,
+        taxable: entry.taxable ?? false,
         recipeToPurchase: entry.recipeToPurchase ?? undefined,
       },
       create: {
@@ -76,6 +78,8 @@ async function main() {
         purchaseUnit: entry.purchaseUnit,
         dimension: dimensionForPurchaseUnit(entry.purchaseUnit),
         aldiFriendly: entry.aldiFriendly,
+        food: entry.food ?? true,
+        taxable: entry.taxable ?? false,
         recipeToPurchase: entry.recipeToPurchase ?? undefined,
       },
     });
