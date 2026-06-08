@@ -50,13 +50,16 @@ export async function estimateListOrder(
       observedDate: { gte: since },
       sourceType: { in: [...REAL_PRICE_SOURCES] },
     },
-    select: { itemId: true, unitPrice: true, amount: true, observedDate: true },
+    select: { itemId: true, unitPrice: true, observedDate: true },
   });
   const obsByItem = new Map<string, ObservationPoint[]>();
   for (const o of observations) {
-    const value = Number(o.unitPrice ?? o.amount);
+    // The estimate is per single purchase unit, so only real per-unit prices feed it. An
+    // observation without a unitPrice (e.g. a manual paid price recorded with unknown quantity)
+    // carries a line total, not a per-unit price — folding it in would skew the median, so skip it.
+    if (o.unitPrice == null) continue;
     const arr = obsByItem.get(o.itemId) ?? [];
-    arr.push({ unitPrice: value, observedDate: o.observedDate });
+    arr.push({ unitPrice: Number(o.unitPrice), observedDate: o.observedDate });
     obsByItem.set(o.itemId, arr);
   }
 
@@ -94,11 +97,13 @@ export async function estimateListOrder(
     sectionAvg.set(sid, pts.reduce((a, b) => a + b, 0) / pts.length);
   }
 
-  // Section names for the basis label.
+  // Section names for the basis label — resolved by each item's CATALOG section (defaultSectionId),
+  // the same key the section averages above are grouped under, so the label and the borrowed
+  // average always agree. (ShoppingListItem.sectionId is the per-list placement and would not.)
   const sectionIds = [
     ...new Set(
       list.items
-        .map((i) => i.item?.defaultSectionId ?? i.sectionId)
+        .map((i) => i.item?.defaultSectionId)
         .filter((s): s is string => Boolean(s)),
     ),
   ];
@@ -114,7 +119,10 @@ export async function estimateListOrder(
 
   const orderLines: OrderLineInput[] = list.items.map((li) => {
     const obs = li.itemId ? (obsByItem.get(li.itemId) ?? []) : [];
-    const sectionId = li.item?.defaultSectionId ?? li.sectionId ?? null;
+    // Borrow the section average / name by the item's catalog section — the key sectionAvg is keyed
+    // by. Falling back to li.sectionId here would look up a key sectionAvg never holds (it is built
+    // only from observed items' defaultSectionId), silently dropping a usable section average.
+    const sectionId = li.item?.defaultSectionId ?? null;
     const fallbacks: EstimateFallbacks = {
       sectionName: sectionId ? (sectionName.get(sectionId) ?? null) : null,
       sectionAverage: sectionId ? (sectionAvg.get(sectionId) ?? null) : null,

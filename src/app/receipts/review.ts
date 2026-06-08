@@ -71,20 +71,28 @@ export async function createItemForLine(
   });
   if (!line) return { ok: false, error: "That receipt line no longer exists." };
 
+  // Create the item and attach it to the line atomically: if the attach fails (e.g. the line was
+  // deleted underneath us) the new item is rolled back rather than left orphaned in the catalog.
   let itemId: string;
   try {
-    const item = await prisma.item.create({
-      data: {
-        canonicalName: fields.canonicalName,
-        purchaseUnit: fields.purchaseUnit,
-        dimension: dimensionForPurchaseUnit(fields.purchaseUnit),
-        defaultSectionId: fields.defaultSectionId,
-        food: fields.food,
-        aldiFriendly: fields.aldiFriendly,
-      },
-      select: { id: true },
+    itemId = await prisma.$transaction(async (tx) => {
+      const item = await tx.item.create({
+        data: {
+          canonicalName: fields.canonicalName,
+          purchaseUnit: fields.purchaseUnit,
+          dimension: dimensionForPurchaseUnit(fields.purchaseUnit),
+          defaultSectionId: fields.defaultSectionId,
+          food: fields.food,
+          aldiFriendly: fields.aldiFriendly,
+        },
+        select: { id: true },
+      });
+      await tx.receiptLineItem.update({
+        where: { id: lineId },
+        data: { matchedItemId: item.id, matchStatus: "new_item", matchConfidence: 1 },
+      });
+      return item.id;
     });
-    itemId = item.id;
   } catch (e) {
     if (isUniqueViolation(e)) {
       return {
@@ -95,10 +103,6 @@ export async function createItemForLine(
     throw e;
   }
 
-  await prisma.receiptLineItem.update({
-    where: { id: lineId },
-    data: { matchedItemId: itemId, matchStatus: "new_item", matchConfidence: 1 },
-  });
   await learnAlias(itemId, line.normalizedName);
   await syncLineObservation(lineId); // M3: new item → write the paid observation
   await recomputeImportStatus(line.receiptId);
