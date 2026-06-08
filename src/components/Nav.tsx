@@ -4,13 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // Section 7.1 navigation. "Items" is added for the catalog view (M2 expands it to full CRUD).
+// "Plan Week" leads the meals-first wizard (Meals → Staples → Restock → Final). The remaining
+// tabs are management/reference areas the wizard draws on.
 const NAV_ITEMS: { href: string; label: string }[] = [
+  { href: "/plan", label: "Plan Week" },
   { href: "/", label: "Dashboard" },
+  { href: "/recipes", label: "Recipes" },
+  { href: "/pantry", label: "Pantry" },
+  { href: "/staples", label: "Staples & Restock" },
   { href: "/grocery-list", label: "Grocery List" },
   { href: "/meal-plan", label: "Meal Plan" },
-  { href: "/recipes", label: "Recipes" },
-  { href: "/staples", label: "Staples & Restock" },
-  { href: "/pantry", label: "Pantry" },
   { href: "/receipts", label: "Receipts" },
   { href: "/items", label: "Items" },
   { href: "/store-layout", label: "Store Layout" },
@@ -28,16 +31,14 @@ export default function Nav() {
         {NAV_ITEMS.map((item) => {
           const active =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const lead = item.href === "/plan";
+          const className = active
+            ? "rounded px-3 py-1.5 text-sm bg-gray-900 text-white"
+            : lead
+              ? "rounded px-3 py-1.5 text-sm font-medium text-green-700 ring-1 ring-green-600 hover:bg-green-50"
+              : "rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900";
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`rounded px-3 py-1.5 text-sm ${
-                active
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
-            >
+            <Link key={item.href} href={item.href} className={`${className} ${lead ? "mr-2" : ""}`}>
               {item.label}
             </Link>
           );

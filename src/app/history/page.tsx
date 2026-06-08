@@ -1,5 +1,6 @@
 import { getAnalytics } from "./data";
 import { ANALYTICS_DEFAULT_WINDOW_MONTHS } from "@/services/AnalyticsService";
+import DeleteTripButton from "./DeleteTripButton";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +9,9 @@ const money = (n: number) => `$${n.toFixed(2)}`;
 export default async function HistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ completed?: string }>;
+  searchParams: Promise<{ completed?: string; deleted?: string; error?: string }>;
 }) {
-  const { completed } = await searchParams;
+  const { completed, deleted, error } = await searchParams;
   const a = await getAnalytics();
 
   return (
@@ -25,6 +26,18 @@ export default async function HistoryPage({
       {completed ? (
         <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
           Trip completed and frozen to history.
+        </div>
+      ) : null}
+
+      {deleted ? (
+        <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+          Trip deleted.
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
         </div>
       ) : null}
 
@@ -62,19 +75,28 @@ export default async function HistoryPage({
 
             <Panel title="Most-selected meals">
               {a.meals.length === 0 ? (
-                <Empty>No completed meal plans yet.</Empty>
+                <Empty>No meals from completed trips yet.</Empty>
               ) : (
                 <Table rows={a.meals.slice(0, 10).map((m) => [m.title, `${m.count}×`])} />
               )}
             </Panel>
 
             <Panel title="Recent trips">
-              <Table
-                rows={a.trips.map((t) => [
-                  `Week of ${t.weekStart.toISOString().slice(0, 10)}`,
-                  `${t.itemCount} items · ${t.totalPaid != null ? money(t.totalPaid) : "—"}`,
-                ])}
-              />
+              <ul className="divide-y divide-gray-100">
+                {a.trips.map((t) => (
+                  <li key={t.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
+                    <span className="text-gray-700">
+                      Week of {t.weekStart.toISOString().slice(0, 10)}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      <span className="tabular-nums text-gray-600">
+                        {t.itemCount} items · {t.totalPaid != null ? money(t.totalPaid) : "—"}
+                      </span>
+                      <DeleteTripButton snapshotId={t.id} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </Panel>
           </div>
 

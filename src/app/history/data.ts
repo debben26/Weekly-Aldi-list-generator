@@ -7,12 +7,16 @@ import {
   purchaseFrequency,
 } from "@/services/AnalyticsService";
 
+// Source labels on a snapshot item that are NOT meals — everything else is a recipe title.
+// Mirrors the SOURCE_LABELS values written by completeTrip (src/app/grocery-list/complete.ts).
+const NON_MEAL_LABELS = new Set(["Weekly Staples", "Restock", "Pantry", "Manual", "Recipe"]);
+
 // All analytics for the History page, scoped to the default 6-month window (spec 6.15).
 export async function getAnalytics(now = new Date()) {
   const [household, store] = await Promise.all([getDefaultHousehold(), getDefaultStore()]);
   const since = windowStart(now);
 
-  const [snapshots, observations, mealEntries] = await Promise.all([
+  const [snapshots, observations] = await Promise.all([
     prisma.tripSnapshot.findMany({
       where: { householdId: household.id, weekStart: { gte: since } },
       include: { items: true },
@@ -22,12 +26,6 @@ export async function getAnalytics(now = new Date()) {
       where: { storeId: store.id, observedDate: { gte: since } },
       include: { item: { select: { canonicalName: true } } },
       orderBy: { observedDate: "desc" },
-    }),
-    prisma.mealPlanEntry.findMany({
-      where: {
-        mealPlan: { householdId: household.id, status: "completed", weekStartDate: { gte: since } },
-      },
-      include: { recipe: { select: { title: true } } },
     }),
   ]);
 
@@ -57,9 +55,20 @@ export async function getAnalytics(now = new Date()) {
     allItems.map((i) => ({ itemId: i.itemId, displayName: i.displayName, checked: i.checked })),
   );
 
-  const meals = mealFrequency(
-    mealEntries.map((e) => ({ recipeId: e.recipeId, title: e.recipe.title })),
-  );
+  // Most-selected meals, derived from frozen trips (not live meal-plan status) so the metric stays
+  // consistent with the rest of History and resets when a trip is deleted. A meal counts once per
+  // trip it appeared in; its recipe title is carried on snapshot-item sourceLabels.
+  const mealOccurrences: { recipeId: string; title: string }[] = [];
+  for (const snap of snapshots) {
+    const titles = new Set<string>();
+    for (const it of snap.items) {
+      for (const label of it.sourceLabels) {
+        if (!NON_MEAL_LABELS.has(label)) titles.add(label);
+      }
+    }
+    for (const title of titles) mealOccurrences.push({ recipeId: title, title });
+  }
+  const meals = mealFrequency(mealOccurrences);
 
   // Price history grouped by item (estimated vs paid distinguishable via sourceType).
   const priceByItem = new Map<
