@@ -13,10 +13,10 @@ export default async function MealsStep({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ notice?: string; error?: string; prompt?: string }>;
+  searchParams: Promise<{ notice?: string; error?: string }>;
 }) {
   const { id: planId } = await params;
-  const { notice, error, prompt } = await searchParams;
+  const { notice, error } = await searchParams;
 
   const plan = await prisma.mealPlan.findUnique({
     where: { id: planId },
@@ -124,38 +124,15 @@ export default async function MealsStep({
           />
 
           <div className="rounded-lg border border-gray-200 bg-white p-4">
-            {prompt === "rebuild" ? (
-              <div className="rounded border border-amber-200 bg-amber-50 p-3">
-                <p className="text-sm text-amber-800">
-                  Changing meals will rebuild your grocery list and discard any manual edits to it.
-                </p>
-                <div className="mt-2 flex gap-2">
-                  <form action={useTheseMeals}>
-                    <input type="hidden" name="planId" value={planId} />
-                    <input type="hidden" name="rebuild" value="true" />
-                    <button className="rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700">
-                      Use these meals &amp; rebuild
-                    </button>
-                  </form>
-                  <a
-                    href={`/plan/${planId}/staples`}
-                    className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100"
-                  >
-                    Keep current list
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <form action={useTheseMeals} className="flex items-center justify-between">
-                <p className="text-sm text-gray-500">
-                  {meals.length} meal{meals.length === 1 ? "" : "s"} selected
-                </p>
-                <input type="hidden" name="planId" value={planId} />
-                <button className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800">
-                  Use these meals →
-                </button>
-              </form>
-            )}
+            <form action={useTheseMeals} className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                {meals.length} meal{meals.length === 1 ? "" : "s"} selected
+              </p>
+              <input type="hidden" name="planId" value={planId} />
+              <button className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800">
+                Use these meals →
+              </button>
+            </form>
           </div>
         </>
       )}

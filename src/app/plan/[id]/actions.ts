@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getDefaultHousehold, getDefaultStore } from "@/lib/context";
+import { getDefaultHousehold } from "@/lib/context";
 import { getRankedSuggestions } from "@/app/meal-plan/data";
 import { generateFromMealPlan } from "@/app/grocery-list/generate";
 import { addRestock } from "@/app/grocery-list/restock";
@@ -147,34 +147,19 @@ export async function addMealToPlan(formData: FormData) {
 }
 
 // Submit the package: require >=1 meal, build the draft grocery list, advance to staples (§7).
-// If a list already exists for the week, confirm before rebuilding (it would discard manual edits).
+// An existing list for the week is rebuilt in place (generateFromMealPlan replaces it).
 export async function useTheseMeals(formData: FormData) {
   const planId = String(formData.get("planId") ?? "");
-  const confirmedRebuild = String(formData.get("rebuild") ?? "") === "true";
 
   const plan = await prisma.mealPlan.findUnique({
     where: { id: planId },
-    select: { householdId: true, weekStartDate: true, _count: { select: { entries: true } } },
+    select: { _count: { select: { entries: true } } },
   });
   if (!plan) redirect("/plan");
   if (plan!._count.entries === 0) {
     redirect(
       `${mealsPath(planId)}?error=${encodeURIComponent("Choose at least one meal before continuing.")}`,
     );
-  }
-
-  const store = await getDefaultStore();
-  const existingList = await prisma.shoppingList.findFirst({
-    where: {
-      householdId: plan!.householdId,
-      storeId: store.id,
-      weekStart: plan!.weekStartDate,
-      status: { not: "completed" },
-    },
-    select: { id: true },
-  });
-  if (existingList && !confirmedRebuild) {
-    redirect(`${mealsPath(planId)}?prompt=rebuild`);
   }
 
   try {
