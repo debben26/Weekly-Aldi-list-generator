@@ -18,13 +18,13 @@ export default async function FinalStep({
   if (!data) return null;
   if (!data.list) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="card p-6">
         <p className="text-sm text-gray-600">
           Pick your meals first — your grocery list is created when you use them.
         </p>
         <Link
           href={`/plan/${planId}/meals`}
-          className="mt-3 inline-block rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
+          className="mt-3 inline-block rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90"
         >
           ← Back to Meals
         </Link>

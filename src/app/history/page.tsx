@@ -17,7 +17,7 @@ export default async function HistoryPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">History &amp; Analytics</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">History &amp; Analytics</h1>
         <p className="mt-1 text-sm text-gray-500">
           Last {ANALYTICS_DEFAULT_WINDOW_MONTHS} months (since {a.since.toISOString().slice(0, 10)}).
         </p>
@@ -36,7 +36,7 @@ export default async function HistoryPage({
       ) : null}
 
       {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {error}
         </div>
       ) : null}
@@ -129,7 +129,7 @@ export default async function HistoryPage({
 
 function Card({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="card p-4">
       <div className="text-xs uppercase tracking-wide text-gray-500">{label}</div>
       <div className="mt-1 text-lg font-semibold">{value}</div>
     </div>
@@ -138,7 +138,7 @@ function Card({ label, value }: { label: string; value: string }) {
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4">
+    <section className="card p-4">
       <h2 className="mb-2 font-semibold">{title}</h2>
       {children}
     </section>

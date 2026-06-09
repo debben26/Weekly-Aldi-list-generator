@@ -33,7 +33,7 @@ export default function RecipeForm({
       {recipe?.id ? <input type="hidden" name="id" value={recipe.id} /> : null}
 
       {state.error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {state.error}
         </div>
       ) : null}
@@ -119,7 +119,7 @@ export default function RecipeForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+          className="btn-primary"
         >
           {pending ? "Saving…" : submitLabel}
         </button>

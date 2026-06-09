@@ -18,7 +18,7 @@ export default function OrderEstimatePanel({ estimate }: { estimate: OrderEstima
   const { subtotal, tax, total, lines, summary } = estimate;
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4">
+    <section className="card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold text-gray-700">Order estimate</h2>
         <span className="text-xs text-gray-500">{summary}</span>

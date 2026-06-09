@@ -51,14 +51,14 @@ export default async function MealPlanDetail({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">
           Week of {plan.weekStartDate.toISOString().slice(0, 10)}
         </h1>
         <div className="flex items-center gap-2">
           {plan.entries.length > 0 ? (
             <form action={generateList}>
               <input type="hidden" name="mealPlanId" value={plan.id} />
-              <button className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700">
+              <button className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90">
                 Generate grocery list
               </button>
             </form>
@@ -70,7 +70,7 @@ export default async function MealPlanDetail({
       </div>
 
       {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {error}
         </div>
       ) : null}
@@ -85,7 +85,7 @@ export default async function MealPlanDetail({
             {plan.entries.map((e) => (
               <li
                 key={e.id}
-                className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm"
+                className="flex items-center justify-between card px-4 py-2 text-sm"
               >
                 <span className="font-medium">{e.recipe.title}</span>
                 <span className="flex items-center gap-2">
@@ -100,7 +100,7 @@ export default async function MealPlanDetail({
                       defaultValue={e.targetServings}
                       className="input w-20"
                     />
-                    <button className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-100">
+                    <button className="btn-secondary px-2 text-xs">
                       Set
                     </button>
                   </form>
@@ -108,7 +108,7 @@ export default async function MealPlanDetail({
                   <form action={removeEntry}>
                     <input type="hidden" name="id" value={e.id} />
                     <input type="hidden" name="mealPlanId" value={plan.id} />
-                    <button className="text-xs text-red-600 hover:underline">Remove</button>
+                    <button className="text-xs text-aldi-red hover:underline">Remove</button>
                   </form>
                 </span>
               </li>
@@ -117,7 +117,7 @@ export default async function MealPlanDetail({
         )}
 
         {/* Add a recipe */}
-        <form action={addEntry} className="flex items-end gap-2 rounded-lg border border-gray-200 bg-white p-3">
+        <form action={addEntry} className="flex items-end gap-2 card p-3">
           <input type="hidden" name="mealPlanId" value={plan.id} />
           <label className="text-xs text-gray-500">
             Recipe
@@ -134,7 +134,7 @@ export default async function MealPlanDetail({
             Servings
             <input name="targetServings" type="number" min={1} className="input mt-0.5 w-20" placeholder="base" />
           </label>
-          <button className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700">
+          <button className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90">
             Add
           </button>
         </form>
@@ -180,7 +180,7 @@ export default async function MealPlanDetail({
         ) : (
           <div className="space-y-3">
             {plan.entries.map((e) => (
-              <div key={e.id} className="rounded-lg border border-gray-200 bg-white p-3">
+              <div key={e.id} className="card p-3">
                 <div className="mb-1 text-sm font-medium">
                   {e.recipe.title}{" "}
                   <span className="text-xs text-gray-400">

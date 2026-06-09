@@ -22,24 +22,32 @@ export default function Nav() {
   const pathname = usePathname();
 
   return (
-    <nav className="border-b border-gray-200 bg-white">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-1 px-4 py-2">
-        <span className="mr-4 font-semibold text-gray-900">Aldi Planner</span>
+    <nav className="sticky top-0 z-40 bg-aldi-navy shadow-md">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-1 px-4 py-2.5">
+        <Link href="/" className="mr-4 text-base font-bold tracking-tight text-white">
+          ALDI <span className="font-normal text-aldi-cyan">Planner</span>
+        </Link>
         {NAV_ITEMS.map((item) => {
           const active =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           const lead = item.href === "/plan";
-          const className = active
-            ? "rounded px-3 py-1.5 text-sm bg-gray-900 text-white"
-            : lead
-              ? "rounded px-3 py-1.5 text-sm font-medium text-green-700 ring-1 ring-green-600 hover:bg-green-50"
-              : "rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900";
+          const className = lead
+            ? `rounded bg-aldi-orange px-3 py-1.5 text-sm font-semibold text-white hover:bg-aldi-orange/90 ${active ? "ring-2 ring-white/60" : ""}`
+            : active
+              ? "rounded bg-aldi-cyan px-3 py-1.5 text-sm font-medium text-aldi-navy"
+              : "rounded px-3 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white";
           return (
             <Link key={item.href} href={item.href} className={`${className} ${lead ? "mr-2" : ""}`}>
               {item.label}
             </Link>
           );
         })}
+      </div>
+      <div aria-hidden className="flex h-1">
+        <div className="flex-1 bg-aldi-cyan" />
+        <div className="flex-1 bg-aldi-orange" />
+        <div className="flex-1 bg-aldi-red" />
+        <div className="flex-1 bg-aldi-yellow" />
       </div>
     </nav>
   );

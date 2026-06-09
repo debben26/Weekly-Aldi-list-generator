@@ -26,7 +26,7 @@ export default async function StoreLayoutPage({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Store Layout</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Store Layout</h1>
         <p className="mt-1 text-sm text-gray-500">
           {store.brand} · {store.name} — sections in walking (route) order. Generated lists
           group items by this order.
@@ -34,12 +34,12 @@ export default async function StoreLayoutPage({
       </div>
 
       {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {error}
         </div>
       ) : null}
 
-      <ol className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <ol className="overflow-hidden card">
         {sections.map((s, i) => {
           const isOther = s.name === OTHER_SECTION_NAME;
           return (
@@ -117,7 +117,7 @@ export default async function StoreLayoutPage({
 
       <form
         action={createSection}
-        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-3"
+        className="flex items-center gap-2 card p-3"
       >
         <input
           name="name"
@@ -127,7 +127,7 @@ export default async function StoreLayoutPage({
         />
         <button
           type="submit"
-          className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700"
+          className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90"
         >
           Add section
         </button>

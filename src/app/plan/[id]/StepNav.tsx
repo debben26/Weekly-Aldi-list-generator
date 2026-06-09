@@ -27,8 +27,8 @@ export default function StepNav({ planId }: { planId: string }) {
               href={href}
               className={`rounded px-3 py-1.5 ${
                 active
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                  ? "bg-aldi-navy text-white"
+                  : "text-gray-500 hover:bg-aldi-navy/10 hover:text-aldi-navy"
               }`}
             >
               <span className="mr-1.5 text-xs opacity-60">{i + 1}</span>

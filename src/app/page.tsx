@@ -15,7 +15,7 @@ export default async function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">This Week</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">This Week</h1>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -38,7 +38,7 @@ export default async function Dashboard() {
 
 function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="card p-4">
       <div className="text-xs uppercase tracking-wide text-gray-500">{label}</div>
       <div className="mt-1 text-lg font-semibold">{value}</div>
       {sub ? <div className="mt-0.5 text-xs text-gray-500">{sub}</div> : null}

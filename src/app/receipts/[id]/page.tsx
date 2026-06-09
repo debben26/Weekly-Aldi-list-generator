@@ -64,7 +64,7 @@ export default async function ReceiptDetailPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{receipt.store.name}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">{receipt.store.name}</h1>
         <Link href="/receipts" className="text-sm text-gray-500 hover:text-gray-900">
           ← Back to receipts
         </Link>
@@ -88,7 +88,7 @@ export default async function ReceiptDetailPage({
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-hidden card">
         <ul className="divide-y divide-gray-100">
           {lines.map((line) => (
             <ReceiptReviewLine key={line.id} line={line} items={items} sections={sections} />

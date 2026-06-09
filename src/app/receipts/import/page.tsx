@@ -8,7 +8,7 @@ export default function ImportReceiptPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Import receipt</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Import receipt</h1>
         <Link href="/receipts" className="text-sm text-gray-500 hover:text-gray-900">
           ← All receipts
         </Link>

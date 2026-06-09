@@ -67,14 +67,14 @@ export default async function MealsStep({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Plan your meals</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Plan your meals</h1>
         <p className="mt-1 text-sm text-gray-500">Week of {weekLabel}</p>
       </div>
 
       <WeatherWidget weekStart={weekLabel} />
 
       {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {error}
         </div>
       ) : null}
@@ -85,7 +85,7 @@ export default async function MealsStep({
       ) : null}
 
       {meals.length === 0 ? (
-        <section className="rounded-lg border border-gray-200 bg-white p-6">
+        <section className="card p-6">
           <h2 className="font-semibold">How many meals do you want this week?</h2>
           <p className="mt-1 text-sm text-gray-500">
             We&apos;ll suggest a package from your saved meals. You can swap or remove any of them.
@@ -104,14 +104,14 @@ export default async function MealsStep({
                 className="input w-24"
               />
             </label>
-            <button className="rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700">
+            <button className="rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90">
               Generate meals
             </button>
           </form>
         </section>
       ) : (
         <>
-          <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <ul className="divide-y divide-gray-100 overflow-hidden card">
             {meals.map((meal) => (
               <MealCard key={meal.entryId} planId={planId} meal={meal} savedRecipes={savedRecipes} />
             ))}
@@ -123,7 +123,7 @@ export default async function MealsStep({
             inPlanRecipeIds={meals.map((m) => m.recipeId)}
           />
 
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="card p-4">
             <form action={useTheseMeals} className="flex items-center justify-between">
               <p className="text-sm text-gray-500">
                 {meals.length} meal{meals.length === 1 ? "" : "s"} selected

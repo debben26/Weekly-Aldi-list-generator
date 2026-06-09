@@ -66,7 +66,7 @@ export default async function GroceryListEditor({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold">
+          <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">
             Grocery List · week of {list.weekStart.toISOString().slice(0, 10)}
           </h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -77,7 +77,7 @@ export default async function GroceryListEditor({
         <div className="flex items-center gap-2">
           <Link
             href={`/grocery-list/${list.id}/print`}
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100"
+            className="btn-secondary px-3 py-1.5"
           >
             Print
           </Link>
@@ -100,7 +100,7 @@ export default async function GroceryListEditor({
       </div>
 
       {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {error}
         </div>
       ) : null}
@@ -110,7 +110,7 @@ export default async function GroceryListEditor({
       ) : null}
 
       {orderedGroups.map((g) => (
-        <section key={g.id} className="rounded-lg border border-gray-200 bg-white">
+        <section key={g.id} className="card">
           <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
             {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
           </h2>
@@ -123,7 +123,7 @@ export default async function GroceryListEditor({
       ))}
 
       {/* Add manual item */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
+      <section className="card p-4">
         <h2 className="mb-2 font-semibold">Add manual item</h2>
         <form action={addManualItem} className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="listId" value={list.id} />
@@ -146,13 +146,13 @@ export default async function GroceryListEditor({
               ))}
             </select>
           </L>
-          <button className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700">Add</button>
+          <button className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90">Add</button>
         </form>
       </section>
 
       {/* Add due restock items */}
       {dueRestock.length > 0 ? (
-        <section className="rounded-lg border border-gray-200 bg-white p-4">
+        <section className="card p-4">
           <h2 className="mb-2 font-semibold">Add due restock</h2>
           <ul className="flex flex-wrap gap-2">
             {dueRestock.map((r) => (

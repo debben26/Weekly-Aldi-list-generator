@@ -69,21 +69,21 @@ export default function MealCard({
           <form action={removeMeal}>
             <input type="hidden" name="planId" value={planId} />
             <input type="hidden" name="entryId" value={meal.entryId} />
-            <button className="rounded border border-red-200 px-2.5 py-1 text-red-600 hover:bg-red-50">
+            <button className="btn-danger">
               Remove
             </button>
           </form>
           <form action={regenerateMeal}>
             <input type="hidden" name="planId" value={planId} />
             <input type="hidden" name="entryId" value={meal.entryId} />
-            <button className="rounded border border-gray-300 px-2.5 py-1 hover:bg-gray-100">
+            <button className="btn-secondary">
               New suggestion
             </button>
           </form>
           <button
             type="button"
             onClick={() => setSearching((s) => !s)}
-            className="rounded border border-gray-300 px-2.5 py-1 hover:bg-gray-100"
+            className="btn-secondary"
           >
             Swap
           </button>
@@ -106,7 +106,7 @@ export default function MealCard({
                 <input type="hidden" name="planId" value={planId} />
                 <input type="hidden" name="entryId" value={meal.entryId} />
                 <input type="hidden" name="recipeId" value={r.id} />
-                <button className="flex-shrink-0 rounded border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-100">
+                <button className="flex-shrink-0 btn-secondary px-2 py-0.5 text-xs">
                   Swap
                 </button>
               </form>

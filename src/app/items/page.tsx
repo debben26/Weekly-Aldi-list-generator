@@ -46,7 +46,7 @@ export default async function ItemsPage({
     <div className="mx-auto max-w-lg space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Items</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Items</h1>
           <p className="mt-1 text-sm text-gray-500">
             {total} item{total === 1 ? "" : "s"} grouped by default section.{" "}
             {includeInactive ? (
@@ -62,14 +62,14 @@ export default async function ItemsPage({
         </div>
         <Link
           href="/items/new"
-          className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700"
+          className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90"
         >
           + New item
         </Link>
       </div>
 
       {groups.map((g) => (
-        <section key={g.name} className="rounded-lg border border-gray-200 bg-white">
+        <section key={g.name} className="card">
           <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
             {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
           </h2>

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const FIT_STYLES: Record<string, string> = {
   good: "bg-green-100 text-green-700",
   medium: "bg-amber-100 text-amber-700",
-  low: "bg-red-100 text-red-700",
+  low: "bg-red-100 text-aldi-red",
   unknown: "bg-gray-100 text-gray-500",
 };
 
@@ -48,7 +48,7 @@ export default async function RecipesPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Recipes</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Recipes</h1>
           <p className="mt-1 text-sm text-gray-500">
             {recipes.length} recipe{recipes.length === 1 ? "" : "s"}. Map ingredients to items
             for better merging and Aldi-fit.
@@ -56,7 +56,7 @@ export default async function RecipesPage({
         </div>
         <Link
           href="/recipes/new"
-          className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700"
+          className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90"
         >
           + New recipe
         </Link>
@@ -72,7 +72,7 @@ export default async function RecipesPage({
               key={s.key}
               href={href}
               className={`rounded px-2.5 py-1 ${
-                active ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100"
+                active ? "bg-aldi-navy text-white" : "text-gray-600 hover:bg-gray-100"
               }`}
             >
               {s.label}
@@ -81,7 +81,7 @@ export default async function RecipesPage({
         })}
       </div>
 
-      <ul className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <ul className="overflow-hidden card">
         {recipes.length === 0 ? (
           <li className="px-4 py-3 text-sm text-gray-400">No recipes yet.</li>
         ) : (
@@ -112,7 +112,7 @@ export default async function RecipesPage({
               </Link>
               <form action={deleteRecipe} className="px-4">
                 <input type="hidden" name="id" value={r.id} />
-                <button className="text-xs text-red-600 hover:underline">Delete</button>
+                <button className="text-xs text-aldi-red hover:underline">Delete</button>
               </form>
             </li>
           ))

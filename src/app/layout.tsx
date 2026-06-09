@@ -31,6 +31,11 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-gray-50 text-gray-900">
         <Nav />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+        <footer className="no-print border-t border-gray-200 bg-white">
+          <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-gray-500">
+            Aldi Weekly Grocery Planner
+          </div>
+        </footer>
       </body>
     </html>
   );

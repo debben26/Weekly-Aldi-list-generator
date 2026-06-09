@@ -8,7 +8,7 @@ const STATUSES = ["have", "low", "out", "unknown"] as const;
 const STATUS_STYLES: Record<string, string> = {
   have: "bg-green-100 text-green-700",
   low: "bg-amber-100 text-amber-700",
-  out: "bg-red-100 text-red-700",
+  out: "bg-red-100 text-aldi-red",
   unknown: "bg-gray-100 text-gray-500",
 };
 
@@ -36,7 +36,7 @@ export default async function PantryPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Pantry</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Pantry</h1>
         <p className="mt-1 text-sm text-gray-500">
           Lightweight on-hand status. Items marked <strong>have</strong> are excluded from
           generated lists (you can override per list).
@@ -44,13 +44,13 @@ export default async function PantryPage({
       </div>
 
       {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {error}
         </div>
       ) : null}
 
       {/* Add / set status */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
+      <section className="card p-4">
         <h2 className="mb-3 font-semibold">Set status</h2>
         <form action={setPantryStatus} className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <label className="col-span-2 block md:col-span-1">
@@ -83,7 +83,7 @@ export default async function PantryPage({
             <input name="unit" className="input" placeholder="optional" />
           </label>
           <div className="col-span-2 md:col-span-4">
-            <button className="rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700">
+            <button className="rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90">
               Save status
             </button>
           </div>
@@ -93,7 +93,7 @@ export default async function PantryPage({
       {/* Current pantry */}
       <section>
         <h2 className="mb-2 font-semibold">On hand ({pantry.length})</h2>
-        <ul className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <ul className="overflow-hidden card">
           {pantry.length === 0 ? (
             <li className="px-4 py-3 text-sm text-gray-400">Nothing tracked yet.</li>
           ) : (
@@ -120,7 +120,7 @@ export default async function PantryPage({
                       <button
                         className={`rounded border px-2 py-0.5 text-xs ${
                           p.status === s
-                            ? "border-gray-900 bg-gray-900 text-white"
+                            ? "border-aldi-navy bg-aldi-navy text-white"
                             : "border-gray-200 text-gray-600 hover:bg-gray-100"
                         }`}
                       >
@@ -130,7 +130,7 @@ export default async function PantryPage({
                   ))}
                   <form action={removePantryItem} className="ml-2">
                     <input type="hidden" name="id" value={p.id} />
-                    <button className="text-xs text-red-600 hover:underline">Remove</button>
+                    <button className="text-xs text-aldi-red hover:underline">Remove</button>
                   </form>
                 </span>
               </li>

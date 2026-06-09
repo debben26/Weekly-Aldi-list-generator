@@ -63,7 +63,7 @@ export default function RecipePicker({
             type="button"
             onClick={() => setSort(s.key)}
             className={`rounded px-2 py-0.5 ${
-              sort === s.key ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100"
+              sort === s.key ? "bg-aldi-navy text-white" : "text-gray-600 hover:bg-gray-100"
             }`}
           >
             {s.label}

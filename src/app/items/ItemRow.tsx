@@ -63,7 +63,7 @@ export default function ItemRow({ item, sections }: { item: Item; sections: Sect
         <form action={setItemActive}>
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="active" value="false" />
-          <button className="text-xs text-red-600 hover:underline">Delete</button>
+          <button className="text-xs text-aldi-red hover:underline">Delete</button>
         </form>
       </div>
     </li>

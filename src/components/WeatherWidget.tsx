@@ -95,7 +95,7 @@ export default function WeatherWidget({ weekStart }: { weekStart: string }) {
     };
   }, []);
 
-  const shell = "rounded-lg border border-gray-200 bg-white p-4";
+  const shell = "card p-4";
 
   if (status === "loading") {
     return (

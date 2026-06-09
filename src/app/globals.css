@@ -1,33 +1,35 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ALDI brand palette */
+@theme {
+  --color-aldi-navy: #00005f;
+  --color-aldi-cyan: #00c8f0;
+  --color-aldi-red: #d20a14;
+  --color-aldi-orange: #ff7800;
+  --color-aldi-yellow: #ffc800;
+  --color-aldi-link: #0077a3; /* darkened cyan: AA-readable link text on white */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer components {
   .input {
-    @apply w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 outline-none focus:border-gray-500;
+    @apply w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 outline-none focus:border-aldi-link focus:ring-1 focus:ring-aldi-link;
+  }
+  .card {
+    @apply rounded-lg border border-gray-200 bg-white shadow-sm;
+  }
+  .btn-primary {
+    @apply rounded bg-aldi-navy px-4 py-2 text-sm font-medium text-white hover:bg-aldi-navy/90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aldi-link;
+  }
+  .btn-secondary {
+    @apply rounded border border-gray-300 bg-white px-2.5 py-1 text-sm hover:border-aldi-navy/40 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aldi-link;
+  }
+  .btn-danger {
+    @apply rounded border border-red-200 px-2.5 py-1 text-sm text-aldi-red hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aldi-red;
   }
 }
 

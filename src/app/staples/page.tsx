@@ -16,7 +16,7 @@ type SectionOption = { id: string; name: string };
 export const dynamic = "force-dynamic";
 
 const STATE_STYLES: Record<string, string> = {
-  due: "bg-red-100 text-red-700",
+  due: "bg-red-100 text-aldi-red",
   maybe_due: "bg-amber-100 text-amber-700",
   not_due: "bg-gray-100 text-gray-500",
   no_cadence: "bg-blue-100 text-blue-700",
@@ -63,7 +63,7 @@ export default async function StaplesPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Staples &amp; Restock</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Staples &amp; Restock</h1>
         <p className="mt-1 text-sm text-gray-500">
           Weekly staples auto-add to every list. Restock items appear here when due — they are
           not added automatically.
@@ -71,13 +71,13 @@ export default async function StaplesPage({
       </div>
 
       {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {error}
         </div>
       ) : null}
 
       {/* Create rule */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
+      <section className="card p-4">
         <h2 className="mb-3 font-semibold">Add a rule</h2>
         <form action={createStapleRule} className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <label className="col-span-2 block md:col-span-1">
@@ -132,7 +132,7 @@ export default async function StaplesPage({
           <div className="col-span-2 md:col-span-3">
             <button
               type="submit"
-              className="rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
+              className="rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90"
             >
               Add rule
             </button>
@@ -143,7 +143,7 @@ export default async function StaplesPage({
       {/* Weekly staples */}
       <section>
         <h2 className="mb-2 font-semibold">Weekly staples ({weekly.filter((w) => w.active).length} active)</h2>
-        <ul className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <ul className="overflow-hidden card">
           {weekly.length === 0 ? (
             <li className="px-4 py-3 text-sm text-gray-400">No weekly staples yet.</li>
           ) : (
@@ -219,7 +219,7 @@ export default async function StaplesPage({
         {snoozed.length > 0 ? (
           <div>
             <h3 className="mb-1 text-sm font-medium text-gray-600">Snoozed</h3>
-            <ul className="rounded-lg border border-gray-200 bg-white">
+            <ul className="card">
               {snoozed.map((s) => (
                 <li
                   key={s.rule.id}
@@ -246,7 +246,7 @@ export default async function StaplesPage({
         ) : null}
 
         {notDue.length > 0 ? (
-          <details className="rounded-lg border border-gray-200 bg-white px-4 py-2">
+          <details className="card px-4 py-2">
             <summary className="cursor-pointer text-sm text-gray-600">
               Not due yet ({notDue.length})
             </summary>
@@ -274,14 +274,14 @@ function DeleteButton({ id }: { id: string }) {
   return (
     <form action={deleteStapleRule}>
       <input type="hidden" name="id" value={id} />
-      <button className="text-xs text-red-600 hover:underline">Delete</button>
+      <button className="text-xs text-aldi-red hover:underline">Delete</button>
     </form>
   );
 }
 
 function SaveButton() {
   return (
-    <button className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100">
+    <button className="btn-secondary px-2 text-xs text-gray-700">
       Save
     </button>
   );
@@ -418,7 +418,7 @@ function RestockGroup({
       ) : (
         <ul className="space-y-2">
           {rows.map((s) => (
-            <li key={s.rule.id} className="rounded-lg border border-gray-200 bg-white p-3">
+            <li key={s.rule.id} className="card p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{s.rule.itemName}</span>
                 <span
@@ -472,7 +472,7 @@ function FormButton({
             <input key={k} type="hidden" name={k} value={v} />
           ))
         : null}
-      <button className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100">
+      <button className="btn-secondary px-2 text-xs text-gray-700">
         {label}
       </button>
     </form>

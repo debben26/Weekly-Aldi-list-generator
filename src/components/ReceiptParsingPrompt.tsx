@@ -24,7 +24,7 @@ export default function ReceiptParsingPrompt() {
         <button
           type="button"
           onClick={copy}
-          className="rounded bg-gray-900 px-3 py-1.5 text-xs text-white hover:bg-gray-700"
+          className="rounded bg-aldi-navy px-3 py-1.5 text-xs text-white hover:bg-aldi-navy/90"
         >
           {copied ? "Copied!" : "Copy prompt"}
         </button>

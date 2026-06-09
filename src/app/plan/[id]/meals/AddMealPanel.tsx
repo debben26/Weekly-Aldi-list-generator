@@ -30,7 +30,7 @@ export default function AddMealPanel({
   const addable = savedRecipes.filter((r) => !inPlan.has(r.id));
 
   return (
-    <div ref={panelRef} className="rounded-lg border border-gray-200 bg-white p-4">
+    <div ref={panelRef} className="card p-4">
       {open ? (
         <RecipePicker
           recipes={addable}
@@ -46,7 +46,7 @@ export default function AddMealPanel({
             >
               <input type="hidden" name="planId" value={planId} />
               <input type="hidden" name="recipeId" value={r.id} />
-              <button className="flex-shrink-0 rounded border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-100">
+              <button className="flex-shrink-0 btn-secondary px-2 py-0.5 text-xs">
                 Add
               </button>
             </form>
@@ -56,7 +56,7 @@ export default function AddMealPanel({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100"
+          className="btn-secondary px-3 py-1.5"
         >
           + Add a meal
         </button>

@@ -14,13 +14,13 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
 
   if (!list) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="card p-6">
         <p className="text-sm text-gray-600">
           Pick your meals first — your grocery list is created when you use them.
         </p>
         <Link
           href={`/plan/${planId}/meals`}
-          className="mt-3 inline-block rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
+          className="mt-3 inline-block rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90"
         >
           ← Back to Meals
         </Link>
@@ -62,19 +62,19 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Weekly staples</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Weekly staples</h1>
         <p className="mt-1 text-sm text-gray-500">
           These are added by default. Uncheck anything you don&apos;t need this week.
         </p>
       </div>
 
       {staples.length === 0 ? (
-        <section className="rounded-lg border border-gray-200 bg-white">
+        <section className="card">
           <p className="px-4 py-3 text-sm text-gray-500">No weekly staples set up yet.</p>
         </section>
       ) : (
         orderedStapleGroups.map((g) => (
-          <section key={g.id} className="rounded-lg border border-gray-200 bg-white">
+          <section key={g.id} className="card">
             <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
               {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
             </h2>
@@ -96,7 +96,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
                         <input type="hidden" name="planId" value={planId} />
                         <input type="hidden" name="listId" value={list.id} />
                         <input type="hidden" name="itemId" value={s.itemId} />
-                        <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
+                        <button className="btn-secondary text-xs">
                           Exclude
                         </button>
                       </form>
@@ -105,7 +105,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
                         <input type="hidden" name="planId" value={planId} />
                         <input type="hidden" name="listId" value={list.id} />
                         <input type="hidden" name="ruleId" value={s.id} />
-                        <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
+                        <button className="btn-secondary text-xs">
                           Include
                         </button>
                       </form>
@@ -119,7 +119,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
       )}
 
       {added.length > 0 ? (
-        <section className="rounded-lg border border-gray-200 bg-white">
+        <section className="card">
           <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
             Added this week
           </h2>
@@ -137,7 +137,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
                 <form action={removeStapleItem}>
                   <input type="hidden" name="planId" value={planId} />
                   <input type="hidden" name="id" value={i.id} />
-                  <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
+                  <button className="btn-secondary text-xs">
                     Remove
                   </button>
                 </form>
@@ -147,7 +147,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
         </section>
       ) : null}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
+      <section className="card p-4">
         <h2 className="mb-2 font-semibold">Add an item</h2>
         <form action={addStapleItem} className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="planId" value={planId} />
@@ -175,7 +175,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
               ))}
             </select>
           </label>
-          <button className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700">
+          <button className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90">
             Add
           </button>
         </form>

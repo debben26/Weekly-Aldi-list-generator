@@ -6,7 +6,7 @@ import { includeRestock, excludeRestock } from "../actions";
 export const dynamic = "force-dynamic";
 
 const STATE_STYLES: Record<string, { label: string; cls: string }> = {
-  due: { label: "Due", cls: "bg-red-100 text-red-700" },
+  due: { label: "Due", cls: "bg-red-100 text-aldi-red" },
   maybe_due: { label: "Maybe due", cls: "bg-amber-100 text-amber-800" },
   not_due: { label: "Not due", cls: "bg-gray-100 text-gray-500" },
   snoozed: { label: "Snoozed", cls: "bg-gray-100 text-gray-400" },
@@ -22,13 +22,13 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
 
   if (!list) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="card p-6">
         <p className="text-sm text-gray-600">
           Pick your meals first — your grocery list is created when you use them.
         </p>
         <Link
           href={`/plan/${planId}/meals`}
-          className="mt-3 inline-block rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
+          className="mt-3 inline-block rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90"
         >
           ← Back to Meals
         </Link>
@@ -59,19 +59,19 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Restock items</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Restock items</h1>
         <p className="mt-1 text-sm text-gray-500">
           Things you buy occasionally. Add any that are running low this week.
         </p>
       </div>
 
       {restock.length === 0 ? (
-        <section className="rounded-lg border border-gray-200 bg-white">
+        <section className="card">
           <p className="px-4 py-3 text-sm text-gray-500">No restock items set up yet.</p>
         </section>
       ) : (
         orderedRestockGroups.map((g) => (
-          <section key={g.name} className="rounded-lg border border-gray-200 bg-white">
+          <section key={g.name} className="card">
             <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
               {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
             </h2>
@@ -90,7 +90,7 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
                         <input type="hidden" name="planId" value={planId} />
                         <input type="hidden" name="listId" value={list.id} />
                         <input type="hidden" name="itemId" value={r.rule.itemId} />
-                        <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
+                        <button className="btn-secondary text-xs">
                           Remove
                         </button>
                       </form>
@@ -99,7 +99,7 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
                         <input type="hidden" name="planId" value={planId} />
                         <input type="hidden" name="listId" value={list.id} />
                         <input type="hidden" name="ruleId" value={r.rule.id} />
-                        <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
+                        <button className="btn-secondary text-xs">
                           + Add
                         </button>
                       </form>

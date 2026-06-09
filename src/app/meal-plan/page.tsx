@@ -27,21 +27,21 @@ export default async function MealPlanPage({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Meal Plan</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Meal Plan</h1>
         <p className="mt-1 text-sm text-gray-500">
           Pick a week, then select ~3–4 recipes. Their scaled ingredients feed the grocery list.
         </p>
       </div>
 
       {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {error}
         </div>
       ) : null}
 
       <form
         action={createMealPlan}
-        className="flex items-end gap-3 rounded-lg border border-gray-200 bg-white p-4"
+        className="flex items-end gap-3 card p-4"
       >
         <label className="text-sm">
           <span className="mb-1 block text-xs text-gray-500">Week starting</span>
@@ -52,12 +52,12 @@ export default async function MealPlanPage({
             className="input"
           />
         </label>
-        <button className="rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700">
+        <button className="rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90">
           Create plan
         </button>
       </form>
 
-      <ul className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <ul className="overflow-hidden card">
         {plans.length === 0 ? (
           <li className="px-4 py-3 text-sm text-gray-400">No plans yet.</li>
         ) : (

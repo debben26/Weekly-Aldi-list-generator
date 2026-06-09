@@ -8,7 +8,7 @@ export default function Placeholder({
 }) {
   return (
     <div>
-      <h1 className="text-2xl font-semibold">{title}</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">{title}</h1>
       <p className="mt-2 text-sm text-gray-500">Coming in {milestone}.</p>
     </div>
   );

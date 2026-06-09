@@ -29,7 +29,7 @@ export default async function GroceryListIndex({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Grocery List</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Grocery List</h1>
         <p className="mt-1 text-sm text-gray-500">
           Generate a merged, route-sorted list from a meal plan&rsquo;s staples + scaled recipes,
           then edit and print it.
@@ -37,14 +37,14 @@ export default async function GroceryListIndex({
       </div>
 
       {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
           {error}
         </div>
       ) : null}
 
       <form
         action={generateList}
-        className="flex items-end gap-3 rounded-lg border border-gray-200 bg-white p-4"
+        className="flex items-end gap-3 card p-4"
       >
         <label className="text-sm">
           <span className="mb-1 block text-xs text-gray-500">Meal plan</span>
@@ -57,7 +57,7 @@ export default async function GroceryListIndex({
             ))}
           </select>
         </label>
-        <button className="rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700">
+        <button className="rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90">
           Generate list
         </button>
       </form>
@@ -65,7 +65,7 @@ export default async function GroceryListIndex({
         Generating replaces any existing list for that week.
       </p>
 
-      <ul className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <ul className="overflow-hidden card">
         {lists.length === 0 ? (
           <li className="px-4 py-3 text-sm text-gray-400">No lists yet.</li>
         ) : (

@@ -21,10 +21,10 @@ export default async function ReceiptsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Receipts</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Receipts</h1>
         <Link
           href="/receipts/import"
-          className="rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
+          className="rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90"
         >
           Import receipt
         </Link>
@@ -35,9 +35,9 @@ export default async function ReceiptsPage() {
           No receipts yet. Import one to start building real price history.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-hidden card">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+            <thead className="bg-aldi-navy/5 text-left text-xs uppercase tracking-wide text-aldi-navy/70">
               <tr>
                 <th className="px-4 py-2">Date</th>
                 <th className="px-4 py-2">Store</th>

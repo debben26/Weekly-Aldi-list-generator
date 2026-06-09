@@ -33,7 +33,7 @@ export default async function EditItemPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">
           {item.canonicalName}
           {!item.active ? (
             <span className="ml-2 rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
@@ -54,7 +54,7 @@ export default async function EditItemPage({
       />
 
       {/* Aliases (spec 5.3 / 6.2) — stored normalized; drive merge matching in M5. */}
-      <section className="max-w-xl space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+      <section className="max-w-xl space-y-3 card p-4">
         <h2 className="font-semibold">Aliases</h2>
         <p className="text-sm text-gray-500">
           Alternate names this item is known by (e.g. &ldquo;2% milk&rdquo;, &ldquo;Friendly
@@ -62,7 +62,7 @@ export default async function EditItemPage({
         </p>
 
         {error ? (
-          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
             {error}
           </div>
         ) : null}
@@ -77,7 +77,7 @@ export default async function EditItemPage({
                   <input type="hidden" name="itemId" value={item.id} />
                   <button
                     type="submit"
-                    className="text-xs text-red-600 hover:underline"
+                    className="text-xs text-aldi-red hover:underline"
                   >
                     Remove
                   </button>
@@ -99,7 +99,7 @@ export default async function EditItemPage({
           />
           <button
             type="submit"
-            className="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100"
+            className="btn-secondary px-3 py-1 text-gray-700"
           >
             Add
           </button>
@@ -114,7 +114,7 @@ export default async function EditItemPage({
           type="submit"
           className={`rounded border px-3 py-1.5 text-sm ${
             item.active
-              ? "border-red-200 text-red-600 hover:bg-red-50"
+              ? "border-red-200 text-aldi-red hover:bg-red-50"
               : "border-green-200 text-green-700 hover:bg-green-50"
           }`}
         >
