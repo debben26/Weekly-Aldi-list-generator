@@ -171,7 +171,7 @@ export default function ReceiptReviewLine({
             </datalist>
           </div>
           <select name="defaultSectionId" defaultValue="" className="input" aria-label="Section">
-            <option value="">— Other / Unassigned —</option>
+            <option value="">— Other —</option>
             {sections.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}

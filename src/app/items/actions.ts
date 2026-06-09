@@ -77,6 +77,15 @@ export async function updateItem(
   redirect("/items");
 }
 
+// Inline section change from the catalog list. No redirect — revalidate regroups in place.
+export async function setItemSection(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const defaultSectionId = String(formData.get("defaultSectionId") ?? "") || null;
+  if (!id) return;
+  await prisma.item.update({ where: { id }, data: { defaultSectionId } });
+  revalidatePath("/items");
+}
+
 // Soft-delete / reactivate (spec 10.3: active flags for reusable config; never hard-delete).
 export async function setItemActive(formData: FormData) {
   const id = String(formData.get("id") ?? "");

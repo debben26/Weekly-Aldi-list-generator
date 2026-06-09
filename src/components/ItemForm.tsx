@@ -60,7 +60,7 @@ export default function ItemForm({
           defaultValue={item?.defaultSectionId ?? ""}
           className="input"
         >
-          <option value="">— Other / Unassigned —</option>
+          <option value="">— Other —</option>
           {sections.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}

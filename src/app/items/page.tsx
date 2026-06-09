@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import ItemRow from "./ItemRow";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,10 @@ export default async function ItemsPage({
   const inactiveCount = await prisma.item.count({ where: { active: false } });
   const total = sections.reduce((n, s) => n + s.itemsDefault.length, 0) + unsectioned.length;
 
+  const sectionOptions = sections
+    .filter((s) => s.active)
+    .map((s) => ({ id: s.id, name: s.name }));
+
   const groups = [
     ...sections.map((s) => ({ name: s.name, items: s.itemsDefault })),
     ...(unsectioned.length
@@ -38,7 +43,7 @@ export default async function ItemsPage({
   ].filter((g) => g.items.length > 0);
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-lg space-y-4">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Items</h1>
@@ -70,25 +75,7 @@ export default async function ItemsPage({
           </h2>
           <ul className="divide-y divide-gray-50">
             {g.items.map((item) => (
-              <li key={item.id}>
-                <Link
-                  href={`/items/${item.id}`}
-                  className="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50"
-                >
-                  <span className={item.active ? "" : "text-gray-400 line-through"}>
-                    {item.canonicalName}
-                    {item.variant ? (
-                      <span className="ml-2 text-xs text-gray-400">{item.variant}</span>
-                    ) : null}
-                    {item.aldiFriendly ? null : (
-                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">
-                        non-Aldi
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-gray-500">{item.purchaseUnit}</span>
-                </Link>
-              </li>
+              <ItemRow key={item.id} item={item} sections={sectionOptions} />
             ))}
           </ul>
         </section>
