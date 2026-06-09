@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import RecipeForm from "@/components/RecipeForm";
-import { updateRecipe, addIngredient, updateIngredient, removeIngredient } from "../actions";
+import { updateRecipe, addIngredient, updateIngredient, removeIngredient, deleteRecipe } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -48,9 +48,15 @@ export default async function EditRecipePage({
             Aldi: {recipe.aldiFitStatus}
           </span>
         </h1>
-        <Link href="/recipes" className="text-sm text-gray-500 hover:text-gray-900">
-          ← All recipes
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/recipes" className="text-sm text-gray-500 hover:text-gray-900">
+            ← All recipes
+          </Link>
+          <form action={deleteRecipe}>
+            <input type="hidden" name="id" value={recipe.id} />
+            <button className="text-sm text-red-600 hover:underline">Delete recipe</button>
+          </form>
+        </div>
       </div>
 
       <RecipeForm action={updateRecipe} recipe={recipe} submitLabel="Save recipe" />
@@ -75,7 +81,7 @@ export default async function EditRecipePage({
           {recipe.ingredients.map((ing) => (
             <li key={ing.id} className="rounded-lg border border-gray-200 bg-white p-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium">{ing.rawText}</span>
+                <span className="text-sm font-medium">{ing.item?.canonicalName ?? ing.rawText}</span>
                 <form action={removeIngredient}>
                   <input type="hidden" name="id" value={ing.id} />
                   <input type="hidden" name="recipeId" value={recipe.id} />
@@ -145,18 +151,9 @@ export default async function EditRecipePage({
         >
           <input type="hidden" name="recipeId" value={recipe.id} />
           <label className="text-xs text-gray-500">
-            Ingredient text *
-            <input
-              name="rawText"
-              required
-              className="input mt-0.5 w-56"
-              placeholder="1 lb ground beef"
-            />
-          </label>
-          <label className="text-xs text-gray-500">
-            Maps to item
+            Item
             <select name="itemId" className="input mt-0.5 w-48" defaultValue="">
-              <option value="">— unmapped —</option>
+              <option value="">— select —</option>
               {items.map((it) => (
                 <option key={it.id} value={it.id}>
                   {it.canonicalName}
@@ -166,7 +163,11 @@ export default async function EditRecipePage({
           </label>
           <label className="text-xs text-gray-500">
             or new item
-            <input name="newItemName" className="input mt-0.5 w-40" placeholder="adds to catalog" />
+            <input
+              name="newItemName"
+              className="input mt-0.5 w-40"
+              placeholder="adds to catalog"
+            />
           </label>
           <label className="text-xs text-gray-500">
             Qty

@@ -74,17 +74,38 @@ export async function updateRecipe(
   redirect(`/recipes/${id}`);
 }
 
+export async function deleteRecipe(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  // MealPlanEntry references are restrict-by-default; clear them first (ingredients cascade).
+  await prisma.$transaction([
+    prisma.mealPlanEntry.deleteMany({ where: { recipeId: id } }),
+    prisma.recipe.delete({ where: { id } }),
+  ]);
+  revalidatePath("/recipes");
+  redirect("/recipes");
+}
+
 export async function addIngredient(formData: FormData) {
   const recipeId = String(formData.get("recipeId") ?? "");
-  const rawText = String(formData.get("rawText") ?? "").trim();
   if (!recipeId) return;
-  if (!rawText) redirect(`/recipes/${recipeId}?error=${encodeURIComponent("Ingredient text is required.")}`);
 
   // A typed-in name creates (or reuses) a catalog item and maps to it; otherwise use the picker.
   const newItemName = String(formData.get("newItemName") ?? "").trim();
-  const itemId = newItemName
-    ? await findOrCreateItem(newItemName)
-    : String(formData.get("itemId") ?? "") || null;
+  const pickedItemId = String(formData.get("itemId") ?? "") || null;
+  if (!newItemName && !pickedItemId) {
+    redirect(`/recipes/${recipeId}?error=${encodeURIComponent("Pick an item or add a new one.")}`);
+  }
+
+  const itemId = newItemName ? await findOrCreateItem(newItemName) : pickedItemId;
+
+  // rawText is a required column kept as a display fallback (10.3); derive it from the catalog item.
+  const rawText =
+    newItemName ||
+    (await prisma.item.findUnique({ where: { id: itemId! }, select: { canonicalName: true } }))
+      ?.canonicalName ||
+    "";
 
   const last = await prisma.recipeIngredient.findFirst({
     where: { recipeId },

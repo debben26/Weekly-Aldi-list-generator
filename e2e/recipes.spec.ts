@@ -12,10 +12,10 @@ test("add an ingredient to a recipe", async ({ page }) => {
   const title = `E2E Recipe ${uid()}`;
   await createRecipe(page, title);
 
-  const rawText = "1 lb ground beef";
-  await page.locator('input[name="rawText"]').fill(rawText);
+  const itemName = `e2e beef ${uid()}`;
+  await page.locator('input[name="newItemName"]').fill(itemName);
   await page.getByRole("button", { name: "Add" }).click();
 
   await expect(page.getByRole("heading", { name: /Ingredients \(1\)/ })).toBeVisible();
-  await expect(page.getByText(rawText)).toBeVisible();
+  await expect(page.getByText(itemName).first()).toBeVisible();
 });

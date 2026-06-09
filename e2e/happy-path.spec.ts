@@ -15,10 +15,9 @@ test("full weekly planning journey end to end", async ({ page }) => {
   await createRecipe(page, recipeTitle);
 
   // 3. Add an ingredient mapped to the item — this is what flows into the grocery list.
-  await page.locator('input[name="rawText"]').fill("1 lb ground beef");
-  await page.locator('form:has(input[name="rawText"]) select[name="itemId"]').selectOption({ label: itemName });
-  await page.locator('form:has(input[name="rawText"]) input[name="quantity"]').fill("1");
-  await page.locator('form:has(input[name="rawText"]) input[name="recipeUnit"]').fill("lb");
+  await page.locator('form:has(input[name="newItemName"]) select[name="itemId"]').selectOption({ label: itemName });
+  await page.locator('form:has(input[name="newItemName"]) input[name="quantity"]').fill("1");
+  await page.locator('form:has(input[name="newItemName"]) input[name="recipeUnit"]').fill("lb");
   await page.getByRole("button", { name: "Add" }).click();
   await expect(page.getByRole("heading", { name: /Ingredients \(1\)/ })).toBeVisible();
 

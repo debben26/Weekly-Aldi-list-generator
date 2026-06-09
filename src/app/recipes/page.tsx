@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold } from "@/lib/context";
+import { deleteRecipe } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -85,10 +86,10 @@ export default async function RecipesPage({
           <li className="px-4 py-3 text-sm text-gray-400">No recipes yet.</li>
         ) : (
           recipes.map((r) => (
-            <li key={r.id} className="border-b border-gray-100 last:border-b-0">
+            <li key={r.id} className="flex items-center border-b border-gray-100 last:border-b-0">
               <Link
                 href={`/recipes/${r.id}`}
-                className="flex items-center justify-between px-4 py-3 text-sm hover:bg-gray-50"
+                className="flex flex-1 items-center justify-between px-4 py-3 text-sm hover:bg-gray-50"
               >
                 <span className="flex items-center gap-2">
                   {r.favorite ? <span title="Favorite">★</span> : null}
@@ -109,6 +110,10 @@ export default async function RecipesPage({
                   Aldi: {r.aldiFitStatus}
                 </span>
               </Link>
+              <form action={deleteRecipe} className="px-4">
+                <input type="hidden" name="id" value={r.id} />
+                <button className="text-xs text-red-600 hover:underline">Delete</button>
+              </form>
             </li>
           ))
         )}
