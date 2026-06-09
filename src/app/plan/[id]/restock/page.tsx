@@ -50,7 +50,7 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
   // suggestion already carries its section name and sort order from getRestockSuggestions.
   const restockGroups = new Map<string, { name: string; sort: number; items: typeof restock }>();
   for (const r of restock) {
-    const name = r.rule.sectionName ?? "Other / Unassigned";
+    const name = r.rule.sectionName ?? "Other";
     if (!restockGroups.has(name)) restockGroups.set(name, { name, sort: r.sectionSortOrder, items: [] });
     restockGroups.get(name)!.items.push(r);
   }

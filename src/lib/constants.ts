@@ -3,7 +3,7 @@
 // as their services are built (M3 restock, M4 Aldi-fit/meal scoring, M5 units).
 
 // The fallback section. Spec 5.2: this one must always exist.
-export const OTHER_SECTION_NAME = "Other / Unassigned";
+export const OTHER_SECTION_NAME = "Other";
 
 // --- Restock suggestion thresholds (spec 8.2) ---
 // ratio = days_since_last_purchase / effective_interval_days

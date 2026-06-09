@@ -55,7 +55,7 @@ export async function completeTrip(listId: string): Promise<string> {
     displayName: it.displayName,
     quantity: it.quantity,
     unit: it.unit,
-    sectionName: it.section?.name ?? "Other / Unassigned",
+    sectionName: it.section?.name ?? "Other",
     checked: it.checked,
     estimatedPrice: it.estimatedPrice != null ? Number(it.estimatedPrice) : null,
     paidPrice: it.paidPrice != null ? Number(it.paidPrice) : null,

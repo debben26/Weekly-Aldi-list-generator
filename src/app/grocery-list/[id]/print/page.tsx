@@ -48,7 +48,7 @@ export default async function PrintList({ params }: { params: Promise<{ id: stri
   const groups = new Map<string, { name: string; sort: number; items: typeof list.items }>();
   for (const it of list.items) {
     const key = it.sectionId ?? "none";
-    const name = it.section?.name ?? "Other / Unassigned";
+    const name = it.section?.name ?? "Other";
     const sort = it.sectionId ? (sectionOrder.get(it.sectionId) ?? 9999) : 10000;
     if (!groups.has(key)) groups.set(key, { name, sort, items: [] });
     groups.get(key)!.items.push(it);

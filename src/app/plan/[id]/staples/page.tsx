@@ -46,7 +46,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
   for (const s of staples) {
     const section = s.defaultSection ?? s.item.defaultSection;
     const key = section?.id ?? "none";
-    const name = section?.name ?? "Other / Unassigned";
+    const name = section?.name ?? "Other";
     const sort = section ? (sectionOrder.get(section.id) ?? 9999) : 10000;
     if (!stapleGroups.has(key)) stapleGroups.set(key, { id: key, name, sort, items: [] });
     stapleGroups.get(key)!.items.push(s);

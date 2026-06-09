@@ -38,12 +38,12 @@ export default async function ItemsPage({
   const groups = [
     ...sections.map((s) => ({ name: s.name, items: s.itemsDefault })),
     ...(unsectioned.length
-      ? [{ name: "Other / Unassigned (no default section)", items: unsectioned }]
+      ? [{ name: "Other (no default section)", items: unsectioned }]
       : []),
   ].filter((g) => g.items.length > 0);
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="mx-auto max-w-lg space-y-4">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Items</h1>
