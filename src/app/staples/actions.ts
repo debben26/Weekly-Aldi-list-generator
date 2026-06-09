@@ -68,6 +68,37 @@ export async function setStapleActive(formData: FormData) {
   revalidatePath("/staples");
 }
 
+// Edit the common fields of a rule (either type). Restock forms also submit cadence fields;
+// weekly forms don't, so only touch cadence when those inputs are present.
+export async function updateStapleRule(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const data: {
+    defaultQuantity: number | null;
+    defaultUnit: string | null;
+    defaultSectionId: string | null;
+    expectedIntervalDays?: number | null;
+    lastPurchasedDate?: Date | null;
+  } = {
+    defaultQuantity: parseNumber(formData.get("defaultQuantity")),
+    defaultUnit: String(formData.get("defaultUnit") ?? "").trim() || null,
+    defaultSectionId: String(formData.get("defaultSectionId") ?? "") || null,
+  };
+  if (formData.has("expectedIntervalDays")) {
+    data.expectedIntervalDays = parseNumber(formData.get("expectedIntervalDays"));
+    data.lastPurchasedDate = parseDate(formData.get("lastPurchasedDate"));
+  }
+  await prisma.stapleRule.update({ where: { id }, data });
+  revalidatePath("/staples");
+}
+
+export async function deleteStapleRule(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.stapleRule.delete({ where: { id } });
+  revalidatePath("/staples");
+}
+
 // Restock review actions (spec 6.4).
 export async function snoozeRestock(formData: FormData) {
   const id = String(formData.get("id") ?? "");
@@ -89,19 +120,6 @@ export async function markPurchased(formData: FormData) {
   await prisma.stapleRule.update({
     where: { id },
     data: { lastPurchasedDate: todayDateOnly(), snoozedUntil: null },
-  });
-  revalidatePath("/staples");
-}
-
-// Lightweight edit so the cadence can be tuned (and the engine exercised) without a list yet.
-export async function updateRestock(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  await prisma.stapleRule.update({
-    where: { id },
-    data: {
-      expectedIntervalDays: parseNumber(formData.get("expectedIntervalDays")),
-      lastPurchasedDate: parseDate(formData.get("lastPurchasedDate")),
-    },
   });
   revalidatePath("/staples");
 }

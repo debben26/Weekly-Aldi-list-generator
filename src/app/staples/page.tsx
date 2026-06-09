@@ -7,8 +7,11 @@ import {
   snoozeRestock,
   unsnoozeRestock,
   markPurchased,
-  updateRestock,
+  updateStapleRule,
+  deleteStapleRule,
 } from "./actions";
+
+type SectionOption = { id: string; name: string };
 
 export const dynamic = "force-dynamic";
 
@@ -147,21 +150,44 @@ export default async function StaplesPage({
             weekly.map((w) => (
               <li
                 key={w.id}
-                className={`flex items-center justify-between border-b border-gray-100 px-4 py-2 text-sm last:border-b-0 ${
+                className={`border-b border-gray-100 px-4 py-2 text-sm last:border-b-0 ${
                   w.active ? "" : "bg-gray-50 text-gray-400"
                 }`}
               >
-                <span>
-                  <span className="font-medium">{w.item.canonicalName}</span>
-                  <span className="ml-2 text-gray-500">
-                    {w.defaultQuantity ?? ""} {w.defaultUnit ?? w.item.purchaseUnit}
+                <div className="flex items-center justify-between">
+                  <span>
+                    <span className="font-medium">{w.item.canonicalName}</span>
+                    <span className="ml-2 text-gray-500">
+                      {w.defaultQuantity ?? ""} {w.defaultUnit ?? w.item.purchaseUnit}
+                    </span>
+                    {w.defaultSection ? (
+                      <span className="ml-2 text-xs text-gray-400">{w.defaultSection.name}</span>
+                    ) : null}
+                    {!w.active ? <span className="ml-2 text-xs">(inactive)</span> : null}
                   </span>
-                  {w.defaultSection ? (
-                    <span className="ml-2 text-xs text-gray-400">{w.defaultSection.name}</span>
-                  ) : null}
-                  {!w.active ? <span className="ml-2 text-xs">(inactive)</span> : null}
-                </span>
-                <ToggleActive id={w.id} active={w.active} />
+                  <span className="flex items-center gap-2">
+                    <ToggleActive id={w.id} active={w.active} />
+                    <DeleteButton id={w.id} />
+                  </span>
+                </div>
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-xs text-gray-500 hover:underline">
+                    Edit
+                  </summary>
+                  <form
+                    action={updateStapleRule}
+                    className="mt-2 flex flex-wrap items-end gap-2"
+                  >
+                    <input type="hidden" name="id" value={w.id} />
+                    <RuleEditFields
+                      sections={sections}
+                      defaultQuantity={w.defaultQuantity}
+                      defaultUnit={w.defaultUnit}
+                      defaultSectionId={w.defaultSectionId}
+                    />
+                    <SaveButton />
+                  </form>
+                </details>
               </li>
             ))
           )}
@@ -176,6 +202,7 @@ export default async function StaplesPage({
           title="Suggested (due / maybe due)"
           empty="Nothing due right now."
           rows={suggested}
+          sections={sections}
           showSuggestActions
         />
 
@@ -184,6 +211,7 @@ export default async function StaplesPage({
             title="Needs a cadence"
             empty=""
             rows={noCadence}
+            sections={sections}
             hint="Set an interval (or record purchases over time) so these can be suggested."
           />
         ) : null}
@@ -195,16 +223,22 @@ export default async function StaplesPage({
               {snoozed.map((s) => (
                 <li
                   key={s.rule.id}
-                  className="flex items-center justify-between border-b border-gray-100 px-4 py-2 text-sm last:border-b-0"
+                  className="border-b border-gray-100 px-4 py-2 text-sm last:border-b-0"
                 >
-                  <span>
-                    {s.rule.itemName}{" "}
-                    <span className="text-xs text-gray-400">{s.evaluation.reason}</span>
-                  </span>
-                  <form action={unsnoozeRestock}>
-                    <input type="hidden" name="id" value={s.rule.id} />
-                    <button className="text-xs text-gray-600 hover:underline">Unsnooze</button>
-                  </form>
+                  <div className="flex items-center justify-between">
+                    <span>
+                      {s.rule.itemName}{" "}
+                      <span className="text-xs text-gray-400">{s.evaluation.reason}</span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <form action={unsnoozeRestock}>
+                        <input type="hidden" name="id" value={s.rule.id} />
+                        <button className="text-xs text-gray-600 hover:underline">Unsnooze</button>
+                      </form>
+                      <DeleteButton id={s.rule.id} />
+                    </span>
+                  </div>
+                  <RestockEdit rule={s.rule} sections={sections} />
                 </li>
               ))}
             </ul>
@@ -219,7 +253,13 @@ export default async function StaplesPage({
             <ul className="mt-2 space-y-1">
               {notDue.map((s) => (
                 <li key={s.rule.id} className="text-sm text-gray-500">
-                  {s.rule.itemName} — {s.evaluation.reason}
+                  <div className="flex items-center justify-between">
+                    <span>
+                      {s.rule.itemName} — {s.evaluation.reason}
+                    </span>
+                    <DeleteButton id={s.rule.id} />
+                  </div>
+                  <RestockEdit rule={s.rule} sections={sections} />
                 </li>
               ))}
             </ul>
@@ -227,6 +267,118 @@ export default async function StaplesPage({
         ) : null}
       </section>
     </div>
+  );
+}
+
+function DeleteButton({ id }: { id: string }) {
+  return (
+    <form action={deleteStapleRule}>
+      <input type="hidden" name="id" value={id} />
+      <button className="text-xs text-red-600 hover:underline">Delete</button>
+    </form>
+  );
+}
+
+function SaveButton() {
+  return (
+    <button className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100">
+      Save
+    </button>
+  );
+}
+
+// Shared quantity / unit / section inputs for the inline edit forms (weekly + restock).
+function RuleEditFields({
+  sections,
+  defaultQuantity,
+  defaultUnit,
+  defaultSectionId,
+}: {
+  sections: SectionOption[];
+  defaultQuantity: number | null;
+  defaultUnit: string | null;
+  defaultSectionId: string | null;
+}) {
+  return (
+    <>
+      <label className="text-xs text-gray-500">
+        Quantity
+        <input
+          name="defaultQuantity"
+          type="number"
+          step="any"
+          defaultValue={defaultQuantity ?? ""}
+          className="input mt-0.5 w-24"
+        />
+      </label>
+      <label className="text-xs text-gray-500">
+        Unit
+        <input
+          name="defaultUnit"
+          defaultValue={defaultUnit ?? ""}
+          placeholder="(item default)"
+          className="input mt-0.5 w-32"
+        />
+      </label>
+      <label className="text-xs text-gray-500">
+        Section
+        <select
+          name="defaultSectionId"
+          defaultValue={defaultSectionId ?? ""}
+          className="input mt-0.5 w-40"
+        >
+          <option value="">— item default —</option>
+          {sections.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
+  );
+}
+
+// Inline edit expander for a restock rule: quantity / unit / section + cadence.
+function RestockEdit({
+  rule,
+  sections,
+}: {
+  rule: RestockSuggestion["rule"];
+  sections: SectionOption[];
+}) {
+  return (
+    <details className="mt-2">
+      <summary className="cursor-pointer text-xs text-gray-500 hover:underline">Edit</summary>
+      <form action={updateStapleRule} className="mt-2 flex flex-wrap items-end gap-2">
+        <input type="hidden" name="id" value={rule.id} />
+        <RuleEditFields
+          sections={sections}
+          defaultQuantity={rule.defaultQuantity}
+          defaultUnit={rule.defaultUnit}
+          defaultSectionId={rule.defaultSectionId}
+        />
+        <label className="text-xs text-gray-500">
+          Interval days
+          <input
+            name="expectedIntervalDays"
+            type="number"
+            defaultValue={rule.expectedIntervalDays ?? ""}
+            className="input mt-0.5 w-24"
+          />
+        </label>
+        <label className="text-xs text-gray-500">
+          Last purchased
+          <input
+            name="lastPurchasedDate"
+            type="date"
+            defaultValue={dateInput(rule.lastPurchasedDate)}
+            className="input mt-0.5 w-40"
+          />
+        </label>
+        <SaveButton />
+      </form>
+    </details>
   );
 }
 
@@ -246,12 +398,14 @@ function RestockGroup({
   title,
   rows,
   empty,
+  sections,
   hint,
   showSuggestActions,
 }: {
   title: string;
   rows: RestockSuggestion[];
   empty: string;
+  sections: SectionOption[];
   hint?: string;
   showSuggestActions?: boolean;
 }) {
@@ -273,45 +427,24 @@ function RestockGroup({
                   {s.evaluation.state.replace("_", " ")}
                 </span>
                 <span className="text-xs text-gray-400">{s.evaluation.confidence} confidence</span>
-                {showSuggestActions ? (
-                  <span className="ml-auto flex gap-2">
-                    <FormButton action={markPurchased} id={s.rule.id} label="Mark purchased" />
-                    <FormButton
-                      action={snoozeRestock}
-                      id={s.rule.id}
-                      label="Snooze 1wk"
-                      extra={{ days: "7" }}
-                    />
-                  </span>
-                ) : null}
+                <span className="ml-auto flex items-center gap-2">
+                  {showSuggestActions ? (
+                    <>
+                      <FormButton action={markPurchased} id={s.rule.id} label="Mark purchased" />
+                      <FormButton
+                        action={snoozeRestock}
+                        id={s.rule.id}
+                        label="Snooze 1wk"
+                        extra={{ days: "7" }}
+                      />
+                    </>
+                  ) : null}
+                  <DeleteButton id={s.rule.id} />
+                </span>
               </div>
               <p className="mt-1 text-sm text-gray-500">{s.evaluation.reason}</p>
 
-              {/* inline cadence edit */}
-              <form action={updateRestock} className="mt-2 flex flex-wrap items-end gap-2">
-                <input type="hidden" name="id" value={s.rule.id} />
-                <label className="text-xs text-gray-500">
-                  Interval days
-                  <input
-                    name="expectedIntervalDays"
-                    type="number"
-                    defaultValue={s.rule.expectedIntervalDays ?? ""}
-                    className="input mt-0.5 w-24"
-                  />
-                </label>
-                <label className="text-xs text-gray-500">
-                  Last purchased
-                  <input
-                    name="lastPurchasedDate"
-                    type="date"
-                    defaultValue={dateInput(s.rule.lastPurchasedDate)}
-                    className="input mt-0.5 w-40"
-                  />
-                </label>
-                <button className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100">
-                  Save
-                </button>
-              </form>
+              <RestockEdit rule={s.rule} sections={sections} />
             </li>
           ))}
         </ul>

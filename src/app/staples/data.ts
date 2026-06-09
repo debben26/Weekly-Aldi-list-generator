@@ -13,6 +13,7 @@ export type RestockSuggestion = {
     itemName: string;
     defaultQuantity: number | null;
     defaultUnit: string | null;
+    defaultSectionId: string | null;
     sectionName: string | null;
     expectedIntervalDays: number | null;
     lastPurchasedDate: Date | null;
@@ -65,6 +66,7 @@ export async function getRestockSuggestions(today = new Date()): Promise<Restock
         itemName: r.item.canonicalName,
         defaultQuantity: r.defaultQuantity,
         defaultUnit: r.defaultUnit,
+        defaultSectionId: r.defaultSectionId,
         sectionName: section?.name ?? null,
         expectedIntervalDays: r.expectedIntervalDays,
         lastPurchasedDate: r.lastPurchasedDate,
