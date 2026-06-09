@@ -82,6 +82,11 @@ export async function generateFromMealPlan(
 
   // 2. Active weekly staples
   for (const s of staples) {
+    // A staple rule may pin its own section (spec 6.3); it takes precedence over the item
+    // default, matching the restock review and includeStaple paths. Recorded here so the merged
+    // row lands in the right aisle instead of Other/Unassigned when the catalog item has no
+    // default section of its own.
+    if (s.defaultSectionId) sectionByItem.set(s.itemId, s.defaultSectionId);
     contributions.push({
       itemId: s.itemId,
       displayName: s.item.canonicalName,

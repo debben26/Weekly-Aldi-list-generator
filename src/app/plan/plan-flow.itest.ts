@@ -90,14 +90,16 @@ describe("meals-first wizard actions", () => {
     const household = await getDefaultHousehold();
     const store = await getDefaultStore();
 
-    // A weekly staple so the generated list carries a non-recipe source too.
+    // A weekly staple so the generated list carries a non-recipe source too. The item has no
+    // default section, but the rule pins one — the generated row must land there (not Other).
+    const produce = await prisma.storeSection.findFirst({ where: { storeId: store.id, name: "Produce" } });
     const wkItem = await prisma.item.create({
       data: { canonicalName: `${TAG} Milk`, purchaseUnit: "gallon", aldiFriendly: true },
     });
     weeklyItemId = wkItem.id;
     itemIds.push(wkItem.id);
     const wkRule = await prisma.stapleRule.create({
-      data: { householdId: household.id, itemId: wkItem.id, ruleType: "weekly", defaultQuantity: 1, defaultUnit: "gallon" },
+      data: { householdId: household.id, itemId: wkItem.id, ruleType: "weekly", defaultQuantity: 1, defaultUnit: "gallon", defaultSectionId: produce!.id },
     });
     weeklyRuleId = wkRule.id;
 
@@ -132,6 +134,10 @@ describe("meals-first wizard actions", () => {
     const sourceTypes = new Set(list!.items.flatMap((i) => i.sources.map((s) => s.sourceType)));
     expect(sourceTypes.has("recipe")).toBe(true);
     expect(sourceTypes.has("weekly_staple")).toBe(true);
+
+    // The staple's pinned section must carry through to the generated row.
+    const stapleRow = list!.items.find((i) => i.itemId === weeklyItemId);
+    expect(stapleRow!.sectionId).toBe(produce!.id);
   });
 
   it("staple and restock include/exclude mutate the draft list correctly", async () => {
