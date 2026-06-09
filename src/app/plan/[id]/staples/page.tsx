@@ -31,11 +31,27 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
   const [staples, sections] = await Promise.all([
     prisma.stapleRule.findMany({
       where: { householdId: plan.householdId, ruleType: "weekly", active: true },
-      include: { item: true },
+      include: { item: { include: { defaultSection: true } }, defaultSection: true },
       orderBy: { item: { canonicalName: "asc" } },
     }),
     prisma.storeSection.findMany({ where: { storeId: store.id }, orderBy: { sortOrder: "asc" } }),
   ]);
+
+  // Group staples by store section in route order; unknown/null section -> a trailing bucket.
+  const sectionOrder = new Map(sections.map((s, i) => [s.id, i]));
+  const stapleGroups = new Map<
+    string,
+    { id: string; name: string; sort: number; items: typeof staples }
+  >();
+  for (const s of staples) {
+    const section = s.defaultSection ?? s.item.defaultSection;
+    const key = section?.id ?? "none";
+    const name = section?.name ?? "Other / Unassigned";
+    const sort = section ? (sectionOrder.get(section.id) ?? 9999) : 10000;
+    if (!stapleGroups.has(key)) stapleGroups.set(key, { id: key, name, sort, items: [] });
+    stapleGroups.get(key)!.items.push(s);
+  }
+  const orderedStapleGroups = [...stapleGroups.values()].sort((a, b) => a.sort - b.sort);
 
   const onList = new Set(list.items.map((i) => i.itemId).filter(Boolean) as string[]);
   // One-off items added on this step (purely manual provenance) — shown so they appear right away.
@@ -52,48 +68,55 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
         </p>
       </div>
 
-      <section className="rounded-lg border border-gray-200 bg-white">
-        {staples.length === 0 ? (
+      {staples.length === 0 ? (
+        <section className="rounded-lg border border-gray-200 bg-white">
           <p className="px-4 py-3 text-sm text-gray-500">No weekly staples set up yet.</p>
-        ) : (
-          <ul className="divide-y divide-gray-50">
-            {staples.map((s) => {
-              const included = onList.has(s.itemId);
-              return (
-                <li key={s.id} className="flex items-center gap-3 px-4 py-2">
-                  <span className={`text-sm ${included ? "" : "text-gray-400"}`}>
-                    {s.item.canonicalName}
-                    {s.defaultQuantity ? (
-                      <span className="ml-2 text-xs text-gray-400">
-                        {s.defaultQuantity} {s.defaultUnit ?? s.item.purchaseUnit}
-                      </span>
-                    ) : null}
-                  </span>
-                  {included ? (
-                    <form action={excludeStaple}>
-                      <input type="hidden" name="planId" value={planId} />
-                      <input type="hidden" name="listId" value={list.id} />
-                      <input type="hidden" name="itemId" value={s.itemId} />
-                      <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
-                        Exclude
-                      </button>
-                    </form>
-                  ) : (
-                    <form action={includeStaple}>
-                      <input type="hidden" name="planId" value={planId} />
-                      <input type="hidden" name="listId" value={list.id} />
-                      <input type="hidden" name="ruleId" value={s.id} />
-                      <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
-                        Include
-                      </button>
-                    </form>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+        </section>
+      ) : (
+        orderedStapleGroups.map((g) => (
+          <section key={g.id} className="rounded-lg border border-gray-200 bg-white">
+            <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
+              {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
+            </h2>
+            <ul className="divide-y divide-gray-50">
+              {g.items.map((s) => {
+                const included = onList.has(s.itemId);
+                return (
+                  <li key={s.id} className="flex items-center gap-3 px-4 py-2">
+                    <span className={`text-sm ${included ? "" : "text-gray-400"}`}>
+                      {s.item.canonicalName}
+                      {s.defaultQuantity ? (
+                        <span className="ml-2 text-xs text-gray-400">
+                          {s.defaultQuantity} {s.defaultUnit ?? s.item.purchaseUnit}
+                        </span>
+                      ) : null}
+                    </span>
+                    {included ? (
+                      <form action={excludeStaple}>
+                        <input type="hidden" name="planId" value={planId} />
+                        <input type="hidden" name="listId" value={list.id} />
+                        <input type="hidden" name="itemId" value={s.itemId} />
+                        <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
+                          Exclude
+                        </button>
+                      </form>
+                    ) : (
+                      <form action={includeStaple}>
+                        <input type="hidden" name="planId" value={planId} />
+                        <input type="hidden" name="listId" value={list.id} />
+                        <input type="hidden" name="ruleId" value={s.id} />
+                        <button className="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-100">
+                          Include
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))
+      )}
 
       {added.length > 0 ? (
         <section className="rounded-lg border border-gray-200 bg-white">
