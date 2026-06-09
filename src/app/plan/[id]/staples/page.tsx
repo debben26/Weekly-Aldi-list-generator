@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getPlanWithList } from "../data";
-import { includeStaple, excludeStaple, addStapleItem, removeStapleItem } from "../actions";
+import { saveStapleSelections, addStapleItem, removeStapleItem } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -64,59 +64,51 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Weekly staples</h1>
         <p className="mt-1 text-sm text-gray-500">
-          These are added by default. Uncheck anything you don&apos;t need this week.
+          Check the staples you want this week. Anything left unchecked won&apos;t go on your
+          list.
         </p>
       </div>
 
-      {staples.length === 0 ? (
-        <section className="card">
-          <p className="px-4 py-3 text-sm text-gray-500">No weekly staples set up yet.</p>
-        </section>
-      ) : (
-        orderedStapleGroups.map((g) => (
-          <section key={g.id} className="card">
-            <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
-              {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
-            </h2>
-            <ul className="divide-y divide-gray-50">
-              {g.items.map((s) => {
-                const included = onList.has(s.itemId);
-                return (
-                  <li key={s.id} className="flex items-center gap-3 px-4 py-2">
-                    <span className={`text-sm ${included ? "" : "text-gray-400"}`}>
-                      {s.item.canonicalName}
-                      {s.defaultQuantity ? (
-                        <span className="ml-2 text-xs text-gray-400">
-                          {s.defaultQuantity} {s.defaultUnit ?? s.item.purchaseUnit}
-                        </span>
-                      ) : null}
-                    </span>
-                    {included ? (
-                      <form action={excludeStaple}>
-                        <input type="hidden" name="planId" value={planId} />
-                        <input type="hidden" name="listId" value={list.id} />
-                        <input type="hidden" name="itemId" value={s.itemId} />
-                        <button className="btn-secondary text-xs">
-                          Exclude
-                        </button>
-                      </form>
-                    ) : (
-                      <form action={includeStaple}>
-                        <input type="hidden" name="planId" value={planId} />
-                        <input type="hidden" name="listId" value={list.id} />
-                        <input type="hidden" name="ruleId" value={s.id} />
-                        <button className="btn-secondary text-xs">
-                          Include
-                        </button>
-                      </form>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+      <form id="staples-form" action={saveStapleSelections} className="space-y-5">
+        <input type="hidden" name="planId" value={planId} />
+        <input type="hidden" name="listId" value={list.id} />
+        {staples.length === 0 ? (
+          <section className="card">
+            <p className="px-4 py-3 text-sm text-gray-500">No weekly staples set up yet.</p>
           </section>
-        ))
-      )}
+        ) : (
+          orderedStapleGroups.map((g) => (
+            <section key={g.id} className="card">
+              <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
+                {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
+              </h2>
+              <ul className="divide-y divide-gray-50">
+                {g.items.map((s) => (
+                  <li key={s.id}>
+                    <label className="flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        name="ruleIds"
+                        value={s.id}
+                        defaultChecked={onList.has(s.itemId)}
+                        className="peer h-4 w-4 accent-aldi-navy"
+                      />
+                      <span className="text-sm text-gray-500 peer-checked:text-gray-900">
+                        {s.item.canonicalName}
+                        {s.defaultQuantity ? (
+                          <span className="ml-2 text-xs text-gray-400">
+                            {s.defaultQuantity} {s.defaultUnit ?? s.item.purchaseUnit}
+                          </span>
+                        ) : null}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        )}
+      </form>
 
       {added.length > 0 ? (
         <section className="card">
@@ -182,12 +174,12 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
       </section>
 
       <div className="flex justify-end">
-        <Link
-          href={`/plan/${planId}/restock`}
+        <button
+          form="staples-form"
           className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800"
         >
-          Continue to Restock →
-        </Link>
+          Save &amp; Continue →
+        </button>
       </div>
     </div>
   );

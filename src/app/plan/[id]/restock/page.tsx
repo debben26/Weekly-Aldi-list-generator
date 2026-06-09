@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getRestockSuggestions } from "@/app/staples/data";
 import { getPlanWithList } from "../data";
-import { includeRestock, excludeRestock } from "../actions";
+import { saveRestockSelections } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -61,65 +61,58 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Restock items</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Things you buy occasionally. Add any that are running low this week.
+          Things you buy occasionally. Check any that are running low this week — anything left
+          unchecked won&apos;t go on your list.
         </p>
       </div>
 
-      {restock.length === 0 ? (
-        <section className="card">
-          <p className="px-4 py-3 text-sm text-gray-500">No restock items set up yet.</p>
-        </section>
-      ) : (
-        orderedRestockGroups.map((g) => (
-          <section key={g.name} className="card">
-            <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
-              {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
-            </h2>
-            <ul className="divide-y divide-gray-50">
-              {g.items.map((r) => {
-                const included = restocked.has(r.rule.itemId);
-                const style = STATE_STYLES[r.evaluation.state] ?? STATE_STYLES.not_due;
-                return (
-                  <li key={r.rule.id} className="flex items-center justify-between px-4 py-2">
-                    <span className="flex items-center gap-2 text-sm">
-                      <span className={included ? "" : "text-gray-700"}>{r.rule.itemName}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${style.cls}`}>{style.label}</span>
-                    </span>
-                    {included ? (
-                      <form action={excludeRestock}>
-                        <input type="hidden" name="planId" value={planId} />
-                        <input type="hidden" name="listId" value={list.id} />
-                        <input type="hidden" name="itemId" value={r.rule.itemId} />
-                        <button className="btn-secondary text-xs">
-                          Remove
-                        </button>
-                      </form>
-                    ) : (
-                      <form action={includeRestock}>
-                        <input type="hidden" name="planId" value={planId} />
-                        <input type="hidden" name="listId" value={list.id} />
-                        <input type="hidden" name="ruleId" value={r.rule.id} />
-                        <button className="btn-secondary text-xs">
-                          + Add
-                        </button>
-                      </form>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+      <form action={saveRestockSelections} className="space-y-5">
+        <input type="hidden" name="planId" value={planId} />
+        <input type="hidden" name="listId" value={list.id} />
+        {restock.length === 0 ? (
+          <section className="card">
+            <p className="px-4 py-3 text-sm text-gray-500">No restock items set up yet.</p>
           </section>
-        ))
-      )}
+        ) : (
+          orderedRestockGroups.map((g) => (
+            <section key={g.name} className="card">
+              <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
+                {g.name} <span className="font-normal text-gray-400">({g.items.length})</span>
+              </h2>
+              <ul className="divide-y divide-gray-50">
+                {g.items.map((r) => {
+                  const style = STATE_STYLES[r.evaluation.state] ?? STATE_STYLES.not_due;
+                  return (
+                    <li key={r.rule.id}>
+                      <label className="flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          name="ruleIds"
+                          value={r.rule.id}
+                          defaultChecked={restocked.has(r.rule.itemId)}
+                          className="peer h-4 w-4 accent-aldi-navy"
+                        />
+                        <span className="flex items-center gap-2 text-sm text-gray-500 peer-checked:text-gray-900">
+                          {r.rule.itemName}
+                          <span className={`rounded-full px-2 py-0.5 text-xs ${style.cls}`}>
+                            {style.label}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))
+        )}
 
-      <div className="flex justify-end">
-        <Link
-          href={`/plan/${planId}/final`}
-          className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800"
-        >
-          Generate Final List →
-        </Link>
-      </div>
+        <div className="flex justify-end">
+          <button className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800">
+            Save &amp; Continue →
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

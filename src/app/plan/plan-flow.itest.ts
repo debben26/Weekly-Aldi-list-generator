@@ -16,10 +16,8 @@ import {
   removeMeal,
   swapMeal,
   useTheseMeals,
-  includeStaple,
-  excludeStaple,
-  includeRestock,
-  excludeRestock,
+  saveStapleSelections,
+  saveRestockSelections,
 } from "@/app/plan/[id]/actions";
 
 const TAG = `ITEST-PLAN-${Date.now()}`;
@@ -90,8 +88,8 @@ describe("meals-first wizard actions", () => {
     const household = await getDefaultHousehold();
     const store = await getDefaultStore();
 
-    // A weekly staple so the generated list carries a non-recipe source too. The item has no
-    // default section, but the rule pins one — the generated row must land there (not Other).
+    // A weekly staple rule for later tests. Staples are opt-in now — generation must NOT add
+    // them; they only land on the list via saveStapleSelections on the Staples step.
     const produce = await prisma.storeSection.findFirst({ where: { storeId: store.id, name: "Produce" } });
     const wkItem = await prisma.item.create({
       data: { canonicalName: `${TAG} Milk`, purchaseUnit: "gallon", aldiFriendly: true },
@@ -133,11 +131,7 @@ describe("meals-first wizard actions", () => {
     listIds.push(list!.id);
     const sourceTypes = new Set(list!.items.flatMap((i) => i.sources.map((s) => s.sourceType)));
     expect(sourceTypes.has("recipe")).toBe(true);
-    expect(sourceTypes.has("weekly_staple")).toBe(true);
-
-    // The staple's pinned section must carry through to the generated row.
-    const stapleRow = list!.items.find((i) => i.itemId === weeklyItemId);
-    expect(stapleRow!.sectionId).toBe(produce!.id);
+    expect(sourceTypes.has("weekly_staple")).toBe(false);
   });
 
   it("staple and restock include/exclude mutate the draft list correctly", async () => {
@@ -158,22 +152,46 @@ describe("meals-first wizard actions", () => {
       data: { householdId: household.id, storeId: store.id, weekStart: new Date("2027-03-01"), status: "active" },
     });
     listIds.push(list.id);
-    const planId = "noop-plan-id"; // only used for the mocked revalidatePath
+    // saveStapleSelections resolves the household via the plan, so it needs a real one.
+    const plan = await prisma.mealPlan.create({
+      data: { householdId: household.id, weekStartDate: new Date("2027-03-01"), status: "draft" },
+    });
+    planIds.push(plan.id);
+    const planId = plan.id;
 
-    // Weekly staple include then exclude.
-    await includeStaple(fd({ planId, listId: list.id, ruleId: weeklyRuleId }));
-    expect(await prisma.shoppingListItem.findFirst({ where: { shoppingListId: list.id, itemId: weeklyItemId } })).not.toBeNull();
-    await excludeStaple(fd({ planId, listId: list.id, itemId: weeklyItemId }));
+    // Weekly staple checked then unchecked via the batch save. The action redirects to the
+    // Restock step on success (the mocked redirect throws).
+    await expect(
+      saveStapleSelections(fd({ planId, listId: list.id, ruleIds: weeklyRuleId })),
+    ).rejects.toThrow(`REDIRECT:/plan/${planId}/restock`);
+    const stapleRow = await prisma.shoppingListItem.findFirst({
+      where: { shoppingListId: list.id, itemId: weeklyItemId },
+      include: { sources: true },
+    });
+    expect(stapleRow).not.toBeNull();
+    expect(stapleRow!.sources.some((s) => s.sourceType === "weekly_staple")).toBe(true);
+    // The rule's pinned section carries through to the saved row.
+    const produce = await prisma.storeSection.findFirst({ where: { storeId: store.id, name: "Produce" } });
+    expect(stapleRow!.sectionId).toBe(produce!.id);
+
+    await expect(
+      saveStapleSelections(fd({ planId, listId: list.id })),
+    ).rejects.toThrow(`REDIRECT:/plan/${planId}/restock`);
     expect(await prisma.shoppingListItem.findFirst({ where: { shoppingListId: list.id, itemId: weeklyItemId } })).toBeNull();
 
-    // Restock include adds restock provenance; exclude removes the restock-only row.
-    await includeRestock(fd({ planId, listId: list.id, ruleId: restockRuleId }));
+    // Restock checked adds restock provenance; unchecked removes the restock-only row. The
+    // batch save redirects to the Final List step on success.
+    await expect(
+      saveRestockSelections(fd({ planId, listId: list.id, ruleIds: restockRuleId })),
+    ).rejects.toThrow(`REDIRECT:/plan/${planId}/final`);
     const row = await prisma.shoppingListItem.findFirst({
       where: { shoppingListId: list.id, itemId: restockItemId },
       include: { sources: true },
     });
     expect(row!.sources.some((s) => s.sourceType === "restock")).toBe(true);
-    await excludeRestock(fd({ planId, listId: list.id, itemId: restockItemId }));
+    await expect(
+      saveRestockSelections(fd({ planId, listId: list.id })),
+    ).rejects.toThrow(`REDIRECT:/plan/${planId}/final`);
     expect(await prisma.shoppingListItem.findFirst({ where: { shoppingListId: list.id, itemId: restockItemId } })).toBeNull();
   });
 });

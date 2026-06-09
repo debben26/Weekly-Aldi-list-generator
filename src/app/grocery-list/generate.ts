@@ -13,11 +13,12 @@ import {
   type MergeItemInfo,
 } from "@/services/ItemMergeService";
 
-// Orchestrates spec 8.1: assemble contributions from active weekly staples + the meal plan's
-// scaled recipe ingredients, suppress pantry `have` items (unless overridden), resolve free text
-// to item_id via aliases (8.1b), merge (8.1a), then persist the ShoppingList with full source
-// provenance. Returns the new ShoppingList id. Regenerating replaces any existing active list
-// for that week; a completed trip blocks regeneration to prevent duplicate history snapshots.
+// Orchestrates spec 8.1: assemble contributions from the meal plan's scaled recipe ingredients,
+// suppress pantry `have` items (unless overridden), resolve free text to item_id via aliases
+// (8.1b), merge (8.1a), then persist the ShoppingList with full source provenance. Weekly
+// staples are opt-in on the Staples step (saveStapleSelections) — they are not added here.
+// Returns the new ShoppingList id. Regenerating replaces any existing active list for that
+// week; a completed trip blocks regeneration to prevent duplicate history snapshots.
 export async function generateFromMealPlan(
   mealPlanId: string,
   overriddenItemIds: Set<string> = new Set(),
@@ -49,11 +50,7 @@ export async function generateFromMealPlan(
     );
   }
 
-  const [staples, pantry, catalog, otherSection] = await Promise.all([
-    prisma.stapleRule.findMany({
-      where: { householdId: plan.householdId, ruleType: "weekly", active: true },
-      include: { item: true },
-    }),
+  const [pantry, catalog, otherSection] = await Promise.all([
     prisma.pantryItem.findMany({ where: { householdId: plan.householdId } }),
     prisma.item.findMany({ where: { active: true }, include: { aliases: true } }),
     prisma.storeSection.findFirst({ where: { storeId: store.id, name: OTHER_SECTION_NAME } }),
@@ -79,24 +76,6 @@ export async function generateFromMealPlan(
   );
 
   const contributions: MergeContribution[] = [];
-
-  // 2. Active weekly staples
-  for (const s of staples) {
-    // A staple rule may pin its own section (spec 6.3); it takes precedence over the item
-    // default, matching the restock review and includeStaple paths. Recorded here so the merged
-    // row lands in the right aisle instead of Other/Unassigned when the catalog item has no
-    // default section of its own.
-    if (s.defaultSectionId) sectionByItem.set(s.itemId, s.defaultSectionId);
-    contributions.push({
-      itemId: s.itemId,
-      displayName: s.item.canonicalName,
-      normalizedName: normalizeText(s.item.canonicalName),
-      quantity: s.defaultQuantity,
-      unit: s.defaultUnit ?? s.item.purchaseUnit,
-      rawText: null,
-      source: { type: "weekly_staple", label: "Weekly Staples", recipeId: null },
-    });
-  }
 
   // 3. Scaled meal-plan recipe ingredients
   for (const entry of plan.entries) {

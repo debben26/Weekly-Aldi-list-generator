@@ -173,34 +173,57 @@ export async function useTheseMeals(formData: FormData) {
 
 // ---------- Weekly Staples step ----------
 
-// Re-add a weekly staple to the draft list after it was excluded. No-op if already present.
-export async function includeStaple(formData: FormData) {
+// Save the staples checklist in one shot: checked rules are added to the draft list (no-op if
+// already present), unchecked rules are removed, then the wizard advances to Restock. Staples
+// are opt-in — list generation no longer adds them, so a fresh list starts with none checked.
+export async function saveStapleSelections(formData: FormData) {
   const planId = String(formData.get("planId") ?? "");
   const listId = String(formData.get("listId") ?? "");
-  const ruleId = String(formData.get("ruleId") ?? "");
+  const checkedRuleIds = new Set(formData.getAll("ruleIds").map(String));
 
-  const rule = await prisma.stapleRule.findUnique({ where: { id: ruleId }, include: { item: true } });
-  if (!rule) return;
-
-  const existing = await prisma.shoppingListItem.findFirst({
-    where: { shoppingListId: listId, itemId: rule.itemId },
+  const plan = await prisma.mealPlan.findUnique({
+    where: { id: planId },
+    select: { householdId: true },
   });
-  if (!existing) {
-    const unit = rule.defaultUnit ?? rule.item.purchaseUnit;
-    await prisma.shoppingListItem.create({
-      data: {
-        shoppingListId: listId,
-        itemId: rule.itemId,
-        displayName: rule.item.canonicalName,
-        quantity: rule.defaultQuantity,
-        unit,
-        sectionId: rule.defaultSectionId ?? rule.item.defaultSectionId,
-        sourceSummary: "Weekly Staples",
-        sources: { create: [{ sourceType: "weekly_staple", quantity: rule.defaultQuantity, unit }] },
-      },
-    });
+  if (!plan) redirect("/plan");
+
+  const [rules, onList] = await Promise.all([
+    prisma.stapleRule.findMany({
+      where: { householdId: plan!.householdId, ruleType: "weekly", active: true },
+      include: { item: true },
+    }),
+    prisma.shoppingListItem.findMany({
+      where: { shoppingListId: listId, itemId: { not: null } },
+      select: { itemId: true },
+    }),
+  ]);
+  const onListItemIds = new Set(onList.map((i) => i.itemId));
+
+  for (const rule of rules) {
+    const checked = checkedRuleIds.has(rule.id);
+    if (checked && !onListItemIds.has(rule.itemId)) {
+      const unit = rule.defaultUnit ?? rule.item.purchaseUnit;
+      await prisma.shoppingListItem.create({
+        data: {
+          shoppingListId: listId,
+          itemId: rule.itemId,
+          displayName: rule.item.canonicalName,
+          quantity: rule.defaultQuantity,
+          unit,
+          sectionId: rule.defaultSectionId ?? rule.item.defaultSectionId,
+          sourceSummary: "Weekly Staples",
+          sources: { create: [{ sourceType: "weekly_staple", quantity: rule.defaultQuantity, unit }] },
+        },
+      });
+    } else if (!checked && onListItemIds.has(rule.itemId)) {
+      // Full-row delete mirrors the old excludeStaple — a staple item that also came from a
+      // recipe is uncommon; Phase 1 keeps this simple.
+      await prisma.shoppingListItem.deleteMany({ where: { shoppingListId: listId, itemId: rule.itemId } });
+    }
   }
+
   revalidatePath(`/plan/${planId}/staples`);
+  redirect(`/plan/${planId}/restock`);
 }
 
 // Add a one-off item to this week's list from the Staples step. Not a recurring rule — it lives on
@@ -235,39 +258,38 @@ export async function removeStapleItem(formData: FormData) {
   revalidatePath(`/plan/${planId}/staples`);
 }
 
-// Exclude a weekly staple from this week's list (delete the row). Phase 1 keeps this simple — a
-// staple item that also came from a recipe is uncommon; full-row delete is acceptable.
-export async function excludeStaple(formData: FormData) {
-  const planId = String(formData.get("planId") ?? "");
-  const listId = String(formData.get("listId") ?? "");
-  const itemId = String(formData.get("itemId") ?? "");
-  await prisma.shoppingListItem.deleteMany({ where: { shoppingListId: listId, itemId } });
-  revalidatePath(`/plan/${planId}/staples`);
-}
-
 // ---------- Restock step ----------
 
-// Include a restock suggestion in the draft list (reuses the provenance-correct restock add).
-export async function includeRestock(formData: FormData) {
+// Save the restock checklist in one shot: checked rules gain restock provenance on the draft
+// list (reusing the provenance-correct add), unchecked rules lose it, then the wizard advances
+// to the Final List. Removing provenance drops the row when restock was its only source;
+// otherwise the row stays (it's still needed for a recipe/staple) and only the restock
+// source/label is stripped. Rows without restock provenance are never touched.
+export async function saveRestockSelections(formData: FormData) {
   const planId = String(formData.get("planId") ?? "");
   const listId = String(formData.get("listId") ?? "");
-  const ruleId = String(formData.get("ruleId") ?? "");
-  await addRestock(listId, ruleId);
-  revalidatePath(`/plan/${planId}/restock`);
-}
+  const checkedRuleIds = new Set(formData.getAll("ruleIds").map(String));
 
-// Remove restock provenance from an item. If the item has no other source, drop the row; otherwise
-// keep the row (it's still needed for a recipe/staple) and just strip the restock source/label.
-export async function excludeRestock(formData: FormData) {
-  const planId = String(formData.get("planId") ?? "");
-  const listId = String(formData.get("listId") ?? "");
-  const itemId = String(formData.get("itemId") ?? "");
-
-  const row = await prisma.shoppingListItem.findFirst({
-    where: { shoppingListId: listId, itemId },
-    include: { sources: true },
+  const plan = await prisma.mealPlan.findUnique({
+    where: { id: planId },
+    select: { householdId: true },
   });
-  if (row) {
+  if (!plan) redirect("/plan");
+
+  const rules = await prisma.stapleRule.findMany({
+    where: { householdId: plan!.householdId, ruleType: "restock", active: true },
+  });
+
+  for (const rule of rules) {
+    if (checkedRuleIds.has(rule.id)) {
+      await addRestock(listId, rule.id); // idempotent
+      continue;
+    }
+    const row = await prisma.shoppingListItem.findFirst({
+      where: { shoppingListId: listId, itemId: rule.itemId },
+      include: { sources: true },
+    });
+    if (!row || !row.sources.some((s) => s.sourceType === "restock")) continue;
     const others = row.sources.filter((s) => s.sourceType !== "restock");
     if (others.length === 0) {
       await prisma.shoppingListItem.delete({ where: { id: row.id } });
@@ -282,5 +304,7 @@ export async function excludeRestock(formData: FormData) {
       });
     }
   }
+
   revalidatePath(`/plan/${planId}/restock`);
+  redirect(`/plan/${planId}/final`);
 }
