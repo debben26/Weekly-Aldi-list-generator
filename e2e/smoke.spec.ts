@@ -31,7 +31,7 @@ test("top nav links navigate between sections", async ({ page }) => {
   await expect(page).toHaveURL(/\/recipes$/);
   await expect(page.getByRole("heading", { level: 1, name: /Recipes/ })).toBeVisible();
 
-  await page.getByRole("link", { name: "Items", exact: true }).click();
+  await page.getByRole("link", { name: "Item Catalog", exact: true }).click();
   await expect(page).toHaveURL(/\/items$/);
   await expect(page.getByRole("heading", { level: 1, name: /Items/ })).toBeVisible();
 });

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { createManualListItem } from "@/lib/manual-list-items";
 import { generateFromMealPlan } from "./generate";
 import { completeTrip } from "./complete";
 import { addRestock } from "./restock";
@@ -62,21 +63,10 @@ export async function removeListItem(formData: FormData) {
 
 export async function addManualItem(formData: FormData) {
   const listId = String(formData.get("listId") ?? "");
-  const displayName = String(formData.get("displayName") ?? "").trim();
-  if (!displayName) {
-    redirect(`/grocery-list/${listId}?error=${encodeURIComponent("Item name is required.")}`);
+  const result = await createManualListItem(formData);
+  if (!result.ok) {
+    redirect(`/grocery-list/${listId}?error=${encodeURIComponent(result.error)}`);
   }
-  await prisma.shoppingListItem.create({
-    data: {
-      shoppingListId: listId,
-      displayName,
-      quantity: num(formData.get("quantity")),
-      unit: String(formData.get("unit") ?? "").trim() || null,
-      sectionId: String(formData.get("sectionId") ?? "") || null,
-      sourceSummary: "Manual",
-      sources: { create: [{ sourceType: "manual", quantity: num(formData.get("quantity")), unit: String(formData.get("unit") ?? "").trim() || null }] },
-    },
-  });
   revalidatePath(`/grocery-list/${listId}`);
 }
 

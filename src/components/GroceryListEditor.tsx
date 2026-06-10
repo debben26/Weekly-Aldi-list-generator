@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getRestockSuggestions } from "@/app/staples/data";
 import { estimateListOrder } from "@/app/grocery-list/estimate";
+import ManualListItemForm from "@/components/ManualListItemForm";
 import OrderEstimatePanel from "@/components/OrderEstimatePanel";
 import GroceryItemRow from "@/components/GroceryItemRow";
 import {
@@ -30,10 +31,15 @@ export default async function GroceryListEditor({
   });
   if (!list) notFound();
 
-  const [sections, restock, orderEstimate] = await Promise.all([
+  const [sections, restock, orderEstimate, items] = await Promise.all([
     prisma.storeSection.findMany({ where: { storeId: list.storeId }, orderBy: { sortOrder: "asc" } }),
     getRestockSuggestions(),
     estimateListOrder(list.id),
+    prisma.item.findMany({
+      where: { active: true },
+      orderBy: { canonicalName: "asc" },
+      select: { id: true, canonicalName: true },
+    }),
   ]);
 
   // Group items by section in route order; unknown/null section -> a trailing bucket.
@@ -125,29 +131,7 @@ export default async function GroceryListEditor({
       {/* Add manual item */}
       <section className="card p-4">
         <h2 className="mb-2 font-semibold">Add manual item</h2>
-        <form action={addManualItem} className="flex flex-wrap items-end gap-2">
-          <input type="hidden" name="listId" value={list.id} />
-          <L label="Name *">
-            <input name="displayName" required className="input w-48" placeholder="e.g. Birthday candles" />
-          </L>
-          <L label="Qty">
-            <input name="quantity" type="number" step="any" className="input w-20" />
-          </L>
-          <L label="Unit">
-            <input name="unit" className="input w-24" />
-          </L>
-          <L label="Section">
-            <select name="sectionId" className="input w-40" defaultValue="">
-              <option value="">— Other —</option>
-              {sections.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </L>
-          <button className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90">Add</button>
-        </form>
+        <ManualListItemForm action={addManualItem} listId={list.id} items={items} sections={sections} />
       </section>
 
       {/* Add due restock items */}
@@ -173,14 +157,5 @@ export default async function GroceryListEditor({
         </section>
       ) : null}
     </div>
-  );
-}
-
-function L({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="text-xs text-gray-500">
-      <span className="mb-0.5 block">{label}</span>
-      {children}
-    </label>
   );
 }

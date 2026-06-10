@@ -17,7 +17,9 @@ import {
   swapMeal,
   useTheseMeals,
   saveStapleSelections,
+  addStapleItem,
   saveRestockSelections,
+  addRestockManualItem,
 } from "@/app/plan/[id]/actions";
 
 const TAG = `ITEST-PLAN-${Date.now()}`;
@@ -193,5 +195,42 @@ describe("meals-first wizard actions", () => {
       saveRestockSelections(fd({ planId, listId: list.id })),
     ).rejects.toThrow(`REDIRECT:/plan/${planId}/final`);
     expect(await prisma.shoppingListItem.findFirst({ where: { shoppingListId: list.id, itemId: restockItemId } })).toBeNull();
+
+    const manualPick = await prisma.item.create({
+      data: {
+        canonicalName: `${TAG} Manual Pick`,
+        purchaseUnit: "bag",
+        defaultSectionId: produce!.id,
+        aldiFriendly: true,
+      },
+    });
+    itemIds.push(manualPick.id);
+
+    await addStapleItem(fd({ planId, listId: list.id, itemId: manualPick.id, quantity: "2" }));
+    const pickedRow = await prisma.shoppingListItem.findFirst({
+      where: { shoppingListId: list.id, itemId: manualPick.id },
+      include: { sources: true },
+    });
+    expect(pickedRow).not.toBeNull();
+    expect(pickedRow!.displayName).toBe(manualPick.canonicalName);
+    expect(pickedRow!.unit).toBe("bag");
+    expect(pickedRow!.sectionId).toBe(produce!.id);
+    expect(pickedRow!.sources).toEqual([
+      expect.objectContaining({ sourceType: "manual", quantity: 2, unit: "bag" }),
+    ]);
+
+    const newManualName = `${TAG} Manual New`;
+    await addRestockManualItem(fd({ planId, listId: list.id, newItemName: newManualName, quantity: "1", unit: "pack" }));
+    const newManualItem = await prisma.item.findUnique({ where: { canonicalName: newManualName } });
+    expect(newManualItem).not.toBeNull();
+    itemIds.push(newManualItem!.id);
+    const newRow = await prisma.shoppingListItem.findFirst({
+      where: { shoppingListId: list.id, itemId: newManualItem!.id },
+      include: { sources: true },
+    });
+    expect(newRow).not.toBeNull();
+    expect(newRow!.displayName).toBe(newManualName);
+    expect(newRow!.unit).toBe("pack");
+    expect(newRow!.sources.some((s) => s.sourceType === "manual")).toBe(true);
   });
 });

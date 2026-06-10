@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold } from "@/lib/context";
+import { createManualListItem } from "@/lib/manual-list-items";
 import { getRankedSuggestions } from "@/app/meal-plan/data";
 import { generateFromMealPlan } from "@/app/grocery-list/generate";
 import { clampMealCount, selectPackage, pickReplacement } from "@/services/MealPackageService";
@@ -270,32 +271,29 @@ export async function saveStapleSelections(formData: FormData) {
 // the draft list only and shows immediately on the step. Revalidates the staples route so it renders.
 export async function addStapleItem(formData: FormData) {
   const planId = String(formData.get("planId") ?? "");
-  const listId = String(formData.get("listId") ?? "");
-  const displayName = String(formData.get("displayName") ?? "").trim();
-  if (!displayName) return;
-
-  const quantity = num(formData.get("quantity"));
-  const unit = String(formData.get("unit") ?? "").trim() || null;
-  await prisma.shoppingListItem.create({
-    data: {
-      shoppingListId: listId,
-      displayName,
-      quantity,
-      unit,
-      sectionId: String(formData.get("sectionId") ?? "") || null,
-      sourceSummary: "Manual",
-      sources: { create: [{ sourceType: "manual", quantity, unit }] },
-    },
-  });
+  const result = await createManualListItem(formData);
+  if (!result.ok) {
+    redirect(`/plan/${planId}/staples?error=${encodeURIComponent(result.error)}`);
+  }
   revalidatePath(`/plan/${planId}/staples`);
 }
 
-// Remove a one-off item added on the Staples step (delete the row by id).
+export async function addRestockManualItem(formData: FormData) {
+  const planId = String(formData.get("planId") ?? "");
+  const result = await createManualListItem(formData);
+  if (!result.ok) {
+    redirect(`/plan/${planId}/restock?error=${encodeURIComponent(result.error)}`);
+  }
+  revalidatePath(`/plan/${planId}/restock`);
+}
+
+// Remove a one-off item added during the wizard (delete the row by id).
 export async function removeStapleItem(formData: FormData) {
   const planId = String(formData.get("planId") ?? "");
+  const step = String(formData.get("step") ?? "staples");
   const id = String(formData.get("id") ?? "");
   await prisma.shoppingListItem.delete({ where: { id } });
-  revalidatePath(`/plan/${planId}/staples`);
+  revalidatePath(`/plan/${planId}/${step}`);
 }
 
 // ---------- Restock step ----------

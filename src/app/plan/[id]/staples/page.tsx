@@ -1,14 +1,22 @@
 import Link from "next/link";
 import SelectAllCheckboxesButton from "@/components/SelectAllCheckboxesButton";
 import SubmitButton from "@/components/SubmitButton";
+import ManualListItemForm from "@/components/ManualListItemForm";
 import { prisma } from "@/lib/prisma";
 import { getPlanWithList } from "../data";
 import { saveStapleSelections, addStapleItem, removeStapleItem } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function StaplesStep({ params }: { params: Promise<{ id: string }> }) {
+export default async function StaplesStep({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
   const { id: planId } = await params;
+  const { error } = await searchParams;
   const data = await getPlanWithList(planId);
 
   if (!data) return null;
@@ -30,13 +38,18 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
     );
   }
 
-  const [staples, sections] = await Promise.all([
+  const [staples, sections, items] = await Promise.all([
     prisma.stapleRule.findMany({
       where: { householdId: plan.householdId, ruleType: "weekly", active: true },
       include: { item: { include: { defaultSection: true } }, defaultSection: true },
       orderBy: { item: { canonicalName: "asc" } },
     }),
     prisma.storeSection.findMany({ where: { storeId: store.id }, orderBy: { sortOrder: "asc" } }),
+    prisma.item.findMany({
+      where: { active: true },
+      orderBy: { canonicalName: "asc" },
+      select: { id: true, canonicalName: true },
+    }),
   ]);
 
   // Group staples by store section in route order; unknown/null section -> a trailing bucket.
@@ -70,6 +83,12 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
           list.
         </p>
       </div>
+
+      {error ? (
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
+          {error}
+        </div>
+      ) : null}
 
       <form id="staples-form" action={saveStapleSelections} className="space-y-5">
         <input type="hidden" name="planId" value={planId} />
@@ -141,6 +160,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
                 </span>
                 <form action={removeStapleItem}>
                   <input type="hidden" name="planId" value={planId} />
+                  <input type="hidden" name="step" value="staples" />
                   <input type="hidden" name="id" value={i.id} />
                   <SubmitButton pendingChildren="Removing..." className="btn-secondary text-xs">
                     Remove
@@ -154,39 +174,14 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
 
       <section className="card p-4">
         <h2 className="mb-2 font-semibold">Add an item</h2>
-        <form action={addStapleItem} className="flex flex-wrap items-end gap-2">
-          <input type="hidden" name="planId" value={planId} />
-          <input type="hidden" name="listId" value={list.id} />
-          <label className="text-xs text-gray-500">
-            <span className="mb-0.5 block">Name *</span>
-            <input name="displayName" required className="input w-48" placeholder="e.g. Bananas" />
-          </label>
-          <label className="text-xs text-gray-500">
-            <span className="mb-0.5 block">Qty</span>
-            <input name="quantity" type="number" step="any" className="input w-20" />
-          </label>
-          <label className="text-xs text-gray-500">
-            <span className="mb-0.5 block">Unit</span>
-            <input name="unit" className="input w-24" />
-          </label>
-          <label className="text-xs text-gray-500">
-            <span className="mb-0.5 block">Section</span>
-            <select name="sectionId" className="input w-40" defaultValue="">
-              <option value="">— Other —</option>
-              {sections.map((sec) => (
-                <option key={sec.id} value={sec.id}>
-                  {sec.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <SubmitButton
-            pendingChildren="Adding..."
-            className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90"
-          >
-            Add
-          </SubmitButton>
-        </form>
+        <ManualListItemForm
+          action={addStapleItem}
+          listId={list.id}
+          planId={planId}
+          step="staples"
+          items={items}
+          sections={sections}
+        />
       </section>
     </div>
   );

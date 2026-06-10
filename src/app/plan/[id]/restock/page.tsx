@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 import { getRestockSuggestions } from "@/app/staples/data";
+import ManualListItemForm from "@/components/ManualListItemForm";
 import SelectAllCheckboxesButton from "@/components/SelectAllCheckboxesButton";
 import SubmitButton from "@/components/SubmitButton";
 import { getPlanWithList } from "../data";
-import { saveRestockSelections } from "../actions";
+import { addRestockManualItem, removeStapleItem, saveRestockSelections } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +17,19 @@ const STATE_STYLES: Record<string, { label: string; cls: string }> = {
   no_cadence: { label: "No cadence", cls: "bg-blue-100 text-blue-700" },
 };
 
-export default async function RestockStep({ params }: { params: Promise<{ id: string }> }) {
+export default async function RestockStep({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
   const { id: planId } = await params;
+  const { error } = await searchParams;
   const data = await getPlanWithList(planId);
 
   if (!data) return null;
-  const { list } = data;
+  const { store, list } = data;
 
   if (!list) {
     return (
@@ -38,7 +47,15 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
     );
   }
 
-  const restock = await getRestockSuggestions();
+  const [restock, sections, items] = await Promise.all([
+    getRestockSuggestions(),
+    prisma.storeSection.findMany({ where: { storeId: store.id }, orderBy: { sortOrder: "asc" } }),
+    prisma.item.findMany({
+      where: { active: true },
+      orderBy: { canonicalName: "asc" },
+      select: { id: true, canonicalName: true },
+    }),
+  ]);
 
   // Items already carrying a restock source on the draft list.
   const restocked = new Set(
@@ -57,6 +74,9 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
     restockGroups.get(name)!.items.push(r);
   }
   const orderedRestockGroups = [...restockGroups.values()].sort((a, b) => a.sort - b.sort);
+  const added = list.items.filter(
+    (i) => i.sources.length > 0 && i.sources.every((s) => s.sourceType === "manual"),
+  );
 
   return (
     <div className="space-y-5">
@@ -67,6 +87,12 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
           unchecked won&apos;t go on your list.
         </p>
       </div>
+
+      {error ? (
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-aldi-red">
+          {error}
+        </div>
+      ) : null}
 
       <form id="restock-form" action={saveRestockSelections} className="space-y-5">
         <input type="hidden" name="planId" value={planId} />
@@ -120,6 +146,48 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
           </SubmitButton>
         </div>
       </form>
+
+      {added.length > 0 ? (
+        <section className="card">
+          <h2 className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
+            Added this week
+          </h2>
+          <ul className="divide-y divide-gray-50">
+            {added.map((i) => (
+              <li key={i.id} className="flex items-center gap-3 px-4 py-2">
+                <span className="text-sm">
+                  {i.displayName}
+                  {i.quantity != null || i.unit ? (
+                    <span className="ml-2 text-xs text-gray-400">
+                      {[i.quantity, i.unit].filter(Boolean).join(" ")}
+                    </span>
+                  ) : null}
+                </span>
+                <form action={removeStapleItem}>
+                  <input type="hidden" name="planId" value={planId} />
+                  <input type="hidden" name="step" value="restock" />
+                  <input type="hidden" name="id" value={i.id} />
+                  <SubmitButton pendingChildren="Removing..." className="btn-secondary text-xs">
+                    Remove
+                  </SubmitButton>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="card p-4">
+        <h2 className="mb-2 font-semibold">Add an item</h2>
+        <ManualListItemForm
+          action={addRestockManualItem}
+          listId={list.id}
+          planId={planId}
+          step="restock"
+          items={items}
+          sections={sections}
+        />
+      </section>
     </div>
   );
 }
