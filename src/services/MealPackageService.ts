@@ -71,10 +71,14 @@ export type SortableRecipe = {
   complexity?: number | null;
 };
 
+export function compareTextInsensitive(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { sensitivity: "base" });
+}
+
 // Blank sort values always sort last; ties fall back to title (then favorite for "default"). Pure
 // and stable so the meal-browser ordering matches the Recipes tab without extra DB round-trips.
 export function sortRecipesBy<T extends SortableRecipe>(recipes: T[], key: RecipeSortKey): T[] {
-  const byTitle = (a: T, b: T) => a.title.localeCompare(b.title);
+  const byTitle = (a: T, b: T) => compareTextInsensitive(a.title, b.title);
   const numAscNullsLast = (a: number | null | undefined, b: number | null | undefined) => {
     const an = a ?? null;
     const bn = b ?? null;
@@ -89,7 +93,7 @@ export function sortRecipesBy<T extends SortableRecipe>(recipes: T[], key: Recip
     if (as === "" && bs === "") return 0;
     if (as === "") return 1;
     if (bs === "") return -1;
-    return as.localeCompare(bs);
+    return compareTextInsensitive(as, bs);
   };
 
   const copy = [...recipes];

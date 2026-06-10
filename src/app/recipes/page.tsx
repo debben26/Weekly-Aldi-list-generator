@@ -1,7 +1,7 @@
 import Link from "next/link";
-import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold } from "@/lib/context";
+import { sortRecipesBy } from "@/services/MealPackageService";
 import { deleteRecipe } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -22,13 +22,6 @@ const SORTS = [
 
 type SortKey = (typeof SORTS)[number]["key"];
 
-const ORDER_BY: Record<SortKey, Prisma.RecipeOrderByWithRelationInput[]> = {
-  default: [{ favorite: "desc" }, { title: "asc" }],
-  price: [{ estPrice: { sort: "asc", nulls: "last" } }, { title: "asc" }],
-  protein: [{ proteinType: { sort: "asc", nulls: "last" } }, { title: "asc" }],
-  complexity: [{ complexity: { sort: "asc", nulls: "last" } }, { title: "asc" }],
-};
-
 export default async function RecipesPage({
   searchParams,
 }: {
@@ -38,11 +31,13 @@ export default async function RecipesPage({
   const activeSort: SortKey = SORTS.some((s) => s.key === sort) ? (sort as SortKey) : "default";
 
   const household = await getDefaultHousehold();
-  const recipes = await prisma.recipe.findMany({
-    where: { householdId: household.id },
-    orderBy: ORDER_BY[activeSort],
-    include: { _count: { select: { ingredients: true } } },
-  });
+  const recipes = sortRecipesBy(
+    await prisma.recipe.findMany({
+      where: { householdId: household.id },
+      include: { _count: { select: { ingredients: true } } },
+    }),
+    activeSort,
+  );
 
   return (
     <div className="space-y-4">

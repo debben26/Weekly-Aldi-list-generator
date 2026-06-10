@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Section 7.1 navigation. "Items" is added for the catalog view (M2 expands it to full CRUD).
+// Section 7.1 navigation. "Item Catalog" is the catalog view (M2 expands it to full CRUD).
 // "Plan Week" leads the meals-first wizard (Meals → Staples → Restock → Final). The remaining
 // tabs are management/reference areas the wizard draws on.
 const NAV_ITEMS: { href: string; label: string }[] = [
@@ -12,7 +12,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/recipes", label: "Recipes" },
   { href: "/staples", label: "Staples & Restock" },
   { href: "/receipts", label: "Receipts" },
-  { href: "/items", label: "Items" },
+  { href: "/items", label: "Item Catalog" },
   { href: "/store-layout", label: "Store Layout" },
   { href: "/history", label: "History" },
   { href: "/settings", label: "Settings" },

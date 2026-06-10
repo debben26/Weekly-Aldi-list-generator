@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getRestockSuggestions } from "@/app/staples/data";
+import SelectAllCheckboxesButton from "@/components/SelectAllCheckboxesButton";
 import { getPlanWithList } from "../data";
 import { saveRestockSelections } from "../actions";
 
@@ -66,7 +67,7 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
         </p>
       </div>
 
-      <form action={saveRestockSelections} className="space-y-5">
+      <form id="restock-form" action={saveRestockSelections} className="space-y-5">
         <input type="hidden" name="planId" value={planId} />
         <input type="hidden" name="listId" value={list.id} />
         {restock.length === 0 ? (
@@ -107,7 +108,12 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
           ))
         )}
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between">
+          {restock.length > 0 ? (
+            <SelectAllCheckboxesButton formId="restock-form" name="ruleIds" />
+          ) : (
+            <span />
+          )}
           <button className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800">
             Save &amp; Continue →
           </button>

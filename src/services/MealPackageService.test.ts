@@ -4,6 +4,7 @@ import {
   selectPackage,
   pickReplacement,
   searchRecipesByName,
+  sortRecipesBy,
   MEAL_COUNT_DEFAULT,
   MEAL_COUNT_MIN,
   MEAL_COUNT_MAX,
@@ -56,5 +57,37 @@ describe("searchRecipesByName", () => {
   });
   it("returns everything for an empty query", () => {
     expect(searchRecipesByName(recipes, "  ")).toHaveLength(3);
+  });
+});
+
+describe("sortRecipesBy", () => {
+  it("sorts titles case-insensitively for default ordering", () => {
+    const recipes = [
+      { title: "banana bread" },
+      { title: "Apple Pie" },
+      { title: "apricot chicken" },
+    ];
+
+    expect(sortRecipesBy(recipes, "default").map((r) => r.title)).toEqual([
+      "Apple Pie",
+      "apricot chicken",
+      "banana bread",
+    ]);
+  });
+
+  it("sorts string sort keys case-insensitively and falls back to title", () => {
+    const recipes = [
+      { title: "ziti", proteinType: "turkey" },
+      { title: "alfredo", proteinType: "Chicken" },
+      { title: "beans", proteinType: "chicken" },
+      { title: "rice", proteinType: null },
+    ];
+
+    expect(sortRecipesBy(recipes, "protein").map((r) => r.title)).toEqual([
+      "alfredo",
+      "beans",
+      "ziti",
+      "rice",
+    ]);
   });
 });

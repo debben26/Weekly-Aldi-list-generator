@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SelectAllCheckboxesButton from "@/components/SelectAllCheckboxesButton";
 import { prisma } from "@/lib/prisma";
 import { getPlanWithList } from "../data";
 import { saveStapleSelections, addStapleItem, removeStapleItem } from "../actions";
@@ -109,6 +110,12 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
           ))
         )}
       </form>
+
+      {staples.length > 0 ? (
+        <div className="flex justify-start">
+          <SelectAllCheckboxesButton formId="staples-form" name="ruleIds" />
+        </div>
+      ) : null}
 
       {added.length > 0 ? (
         <section className="card">
