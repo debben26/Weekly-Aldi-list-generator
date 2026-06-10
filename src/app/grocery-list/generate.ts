@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getDefaultStore } from "@/lib/context";
 import { OTHER_SECTION_NAME } from "@/lib/constants";
+import { randomUUID } from "node:crypto";
 import {
   scaleIngredientQuantity,
   isSuppressedByPantry,
@@ -116,46 +117,66 @@ export async function generateFromMealPlan(
 
   // Replace any existing active list for this household/store/week, then persist fresh.
   // The status filter ensures a completed list can never be deleted here even under a race.
-  await prisma.shoppingList.deleteMany({
-    where: {
-      householdId: plan.householdId,
-      storeId: store.id,
-      weekStart: plan.weekStartDate,
-      status: { not: "completed" },
-    },
-  });
-  const list = await prisma.shoppingList.create({
-    data: {
-      householdId: plan.householdId,
-      storeId: store.id,
-      weekStart: plan.weekStartDate,
-      status: "active",
-    },
-  });
-
-  for (const row of rows) {
-    // 10. Section: item default -> Other / Unassigned.
-    const sectionId = resolveSectionId(row.itemId, sectionByItem, otherSection?.id ?? null);
-    await prisma.shoppingListItem.create({
-      data: {
-        shoppingListId: list.id,
-        itemId: row.itemId,
-        displayName: row.displayName,
-        quantity: row.quantity,
-        unit: row.unit,
-        sectionId,
-        sourceSummary: row.sourceSummary,
-        sources: {
-          create: row.sources.map((s) => ({
-            sourceType: s.type,
-            recipeId: s.recipeId,
-            quantity: s.quantity,
-            unit: s.unit,
-          })),
-        },
+  const list = await prisma.$transaction(async (tx) => {
+    await tx.shoppingList.deleteMany({
+      where: {
+        householdId: plan.householdId,
+        storeId: store.id,
+        weekStart: plan.weekStartDate,
+        status: { not: "completed" },
       },
     });
-  }
+    const createdList = await tx.shoppingList.create({
+      data: {
+        householdId: plan.householdId,
+        storeId: store.id,
+        weekStart: plan.weekStartDate,
+        status: "active",
+      },
+    });
+
+    const itemRows = rows.map((row) => ({
+      id: randomUUID(),
+      shoppingListId: createdList.id,
+      itemId: row.itemId,
+      displayName: row.displayName,
+      quantity: row.quantity,
+      unit: row.unit,
+      sectionId: resolveSectionId(row.itemId, sectionByItem, otherSection?.id ?? null),
+      sourceSummary: row.sourceSummary,
+      sources: row.sources,
+    }));
+
+    if (itemRows.length > 0) {
+      await tx.shoppingListItem.createMany({
+        data: itemRows.map((row) => ({
+          id: row.id,
+          shoppingListId: row.shoppingListId,
+          itemId: row.itemId,
+          displayName: row.displayName,
+          quantity: row.quantity,
+          unit: row.unit,
+          sectionId: row.sectionId,
+          sourceSummary: row.sourceSummary,
+        })),
+      });
+
+      const sourceRows = itemRows.flatMap((row) =>
+        row.sources.map((s) => ({
+          shoppingListItemId: row.id,
+          sourceType: s.type,
+          recipeId: s.recipeId,
+          quantity: s.quantity,
+          unit: s.unit,
+        })),
+      );
+      if (sourceRows.length > 0) {
+        await tx.shoppingListItemSource.createMany({ data: sourceRows });
+      }
+    }
+
+    return createdList;
+  });
 
   return list.id;
 }

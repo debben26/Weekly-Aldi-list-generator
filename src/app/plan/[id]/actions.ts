@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold } from "@/lib/context";
 import { getRankedSuggestions } from "@/app/meal-plan/data";
 import { generateFromMealPlan } from "@/app/grocery-list/generate";
-import { addRestock } from "@/app/grocery-list/restock";
 import { clampMealCount, selectPackage, pickReplacement } from "@/services/MealPackageService";
 
 function mealsPath(planId: string) {
@@ -19,6 +19,24 @@ function num(v: FormDataEntryValue | null): number | null {
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
+
+type BatchListItemRow = {
+  id: string;
+  shoppingListId: string;
+  itemId: string;
+  displayName: string;
+  quantity: number | null;
+  unit: string | null;
+  sectionId: string | null;
+  sourceSummary: string;
+};
+
+type BatchListItemSourceRow = {
+  shoppingListItemId: string;
+  sourceType: "weekly_staple" | "restock";
+  quantity: number | null;
+  unit: string | null;
+};
 
 // Generate the initial meal package: fill the plan up to `count` entries from ranked saved recipes,
 // skipping recipes already in the plan. Under-supply (fewer saved recipes than requested) is not an
@@ -198,29 +216,51 @@ export async function saveStapleSelections(formData: FormData) {
     }),
   ]);
   const onListItemIds = new Set(onList.map((i) => i.itemId));
+  const createRows: BatchListItemRow[] = [];
+  const createSourceRows: BatchListItemSourceRow[] = [];
+  const deleteItemIds: string[] = [];
 
   for (const rule of rules) {
     const checked = checkedRuleIds.has(rule.id);
     if (checked && !onListItemIds.has(rule.itemId)) {
       const unit = rule.defaultUnit ?? rule.item.purchaseUnit;
-      await prisma.shoppingListItem.create({
-        data: {
-          shoppingListId: listId,
-          itemId: rule.itemId,
-          displayName: rule.item.canonicalName,
-          quantity: rule.defaultQuantity,
-          unit,
-          sectionId: rule.defaultSectionId ?? rule.item.defaultSectionId,
-          sourceSummary: "Weekly Staples",
-          sources: { create: [{ sourceType: "weekly_staple", quantity: rule.defaultQuantity, unit }] },
-        },
+      const id = randomUUID();
+      createRows.push({
+        id,
+        shoppingListId: listId,
+        itemId: rule.itemId,
+        displayName: rule.item.canonicalName,
+        quantity: rule.defaultQuantity,
+        unit,
+        sectionId: rule.defaultSectionId ?? rule.item.defaultSectionId,
+        sourceSummary: "Weekly Staples",
+      });
+      createSourceRows.push({
+        shoppingListItemId: id,
+        sourceType: "weekly_staple" as const,
+        quantity: rule.defaultQuantity,
+        unit,
       });
     } else if (!checked && onListItemIds.has(rule.itemId)) {
       // Full-row delete mirrors the old excludeStaple — a staple item that also came from a
       // recipe is uncommon; Phase 1 keeps this simple.
-      await prisma.shoppingListItem.deleteMany({ where: { shoppingListId: listId, itemId: rule.itemId } });
+      deleteItemIds.push(rule.itemId);
     }
   }
+
+  await prisma.$transaction(async (tx) => {
+    if (deleteItemIds.length > 0) {
+      await tx.shoppingListItem.deleteMany({
+        where: { shoppingListId: listId, itemId: { in: deleteItemIds } },
+      });
+    }
+    if (createRows.length > 0) {
+      await tx.shoppingListItem.createMany({ data: createRows });
+    }
+    if (createSourceRows.length > 0) {
+      await tx.shoppingListItemSource.createMany({ data: createSourceRows });
+    }
+  });
 
   revalidatePath(`/plan/${planId}/staples`);
   redirect(`/plan/${planId}/restock`);
@@ -278,32 +318,92 @@ export async function saveRestockSelections(formData: FormData) {
 
   const rules = await prisma.stapleRule.findMany({
     where: { householdId: plan!.householdId, ruleType: "restock", active: true },
+    include: { item: true },
   });
+  const rows = await prisma.shoppingListItem.findMany({
+    where: { shoppingListId: listId, itemId: { in: rules.map((r) => r.itemId) } },
+    include: { sources: true },
+  });
+  const rowByItemId = new Map(rows.filter((row) => row.itemId).map((row) => [row.itemId!, row]));
+
+  const createRows: BatchListItemRow[] = [];
+  const createSourceRows: BatchListItemSourceRow[] = [];
+  const updateRows: { id: string; sourceSummary: string | null }[] = [];
+  const deleteRowIds: string[] = [];
+  const stripRestockSourceRowIds: string[] = [];
 
   for (const rule of rules) {
+    const row = rowByItemId.get(rule.itemId);
+    const hasRestockSource = row?.sources.some((s) => s.sourceType === "restock") ?? false;
+
     if (checkedRuleIds.has(rule.id)) {
-      await addRestock(listId, rule.id); // idempotent
+      if (hasRestockSource) continue;
+      const unit = rule.defaultUnit ?? rule.item.purchaseUnit;
+      if (!row) {
+        const id = randomUUID();
+        createRows.push({
+          id,
+          shoppingListId: listId,
+          itemId: rule.itemId,
+          displayName: rule.item.canonicalName,
+          quantity: rule.defaultQuantity,
+          unit,
+          sectionId: rule.defaultSectionId ?? rule.item.defaultSectionId,
+          sourceSummary: "Restock",
+        });
+        createSourceRows.push({
+          shoppingListItemId: id,
+          sourceType: "restock" as const,
+          quantity: rule.defaultQuantity,
+          unit,
+        });
+      } else {
+        const labels = (row.sourceSummary ?? "").split(" + ").filter(Boolean);
+        if (!labels.includes("Restock")) labels.push("Restock");
+        updateRows.push({ id: row.id, sourceSummary: labels.join(" + ") });
+        createSourceRows.push({
+          shoppingListItemId: row.id,
+          sourceType: "restock" as const,
+          quantity: rule.defaultQuantity,
+          unit,
+        });
+      }
       continue;
     }
-    const row = await prisma.shoppingListItem.findFirst({
-      where: { shoppingListId: listId, itemId: rule.itemId },
-      include: { sources: true },
-    });
-    if (!row || !row.sources.some((s) => s.sourceType === "restock")) continue;
+
+    if (!row || !hasRestockSource) continue;
     const others = row.sources.filter((s) => s.sourceType !== "restock");
     if (others.length === 0) {
-      await prisma.shoppingListItem.delete({ where: { id: row.id } });
+      deleteRowIds.push(row.id);
     } else {
-      await prisma.shoppingListItemSource.deleteMany({
-        where: { shoppingListItemId: row.id, sourceType: "restock" },
-      });
+      stripRestockSourceRowIds.push(row.id);
       const labels = (row.sourceSummary ?? "").split(" + ").filter((l) => l && l !== "Restock");
-      await prisma.shoppingListItem.update({
-        where: { id: row.id },
-        data: { sourceSummary: labels.join(" + ") || null },
-      });
+      updateRows.push({ id: row.id, sourceSummary: labels.join(" + ") || null });
     }
   }
+
+  await prisma.$transaction(async (tx) => {
+    if (deleteRowIds.length > 0) {
+      await tx.shoppingListItem.deleteMany({ where: { id: { in: deleteRowIds } } });
+    }
+    if (stripRestockSourceRowIds.length > 0) {
+      await tx.shoppingListItemSource.deleteMany({
+        where: { shoppingListItemId: { in: stripRestockSourceRowIds }, sourceType: "restock" },
+      });
+    }
+    if (createRows.length > 0) {
+      await tx.shoppingListItem.createMany({ data: createRows });
+    }
+    if (createSourceRows.length > 0) {
+      await tx.shoppingListItemSource.createMany({ data: createSourceRows });
+    }
+    for (const row of updateRows) {
+      await tx.shoppingListItem.update({
+        where: { id: row.id },
+        data: { sourceSummary: row.sourceSummary },
+      });
+    }
+  });
 
   revalidatePath(`/plan/${planId}/restock`);
   redirect(`/plan/${planId}/final`);

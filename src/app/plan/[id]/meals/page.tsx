@@ -5,6 +5,7 @@ import { generatePackage, useTheseMeals } from "../actions";
 import MealCard from "./MealCard";
 import AddMealPanel from "./AddMealPanel";
 import WeatherWidget from "@/components/WeatherWidget";
+import SubmitButton from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -104,9 +105,12 @@ export default async function MealsStep({
                 className="input w-24"
               />
             </label>
-            <button className="rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90">
+            <SubmitButton
+              pendingChildren="Generating..."
+              className="rounded bg-aldi-navy px-4 py-2 text-sm text-white hover:bg-aldi-navy/90"
+            >
               Generate meals
-            </button>
+            </SubmitButton>
           </form>
         </section>
       ) : (
@@ -129,9 +133,12 @@ export default async function MealsStep({
                 {meals.length} meal{meals.length === 1 ? "" : "s"} selected
               </p>
               <input type="hidden" name="planId" value={planId} />
-              <button className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800">
+              <SubmitButton
+                pendingChildren="Building list..."
+                className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800"
+              >
                 Use these meals →
-              </button>
+              </SubmitButton>
             </form>
           </div>
         </>

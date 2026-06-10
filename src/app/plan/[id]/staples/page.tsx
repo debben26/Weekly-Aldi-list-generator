@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SelectAllCheckboxesButton from "@/components/SelectAllCheckboxesButton";
+import SubmitButton from "@/components/SubmitButton";
 import { prisma } from "@/lib/prisma";
 import { getPlanWithList } from "../data";
 import { saveStapleSelections, addStapleItem, removeStapleItem } from "../actions";
@@ -55,7 +56,7 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
   const orderedStapleGroups = [...stapleGroups.values()].sort((a, b) => a.sort - b.sort);
 
   const onList = new Set(list.items.map((i) => i.itemId).filter(Boolean) as string[]);
-  // One-off items added on this step (purely manual provenance) — shown so they appear right away.
+  // One-off items added on this step (purely manual provenance) - shown so they appear right away.
   const added = list.items.filter(
     (i) => i.sources.length > 0 && i.sources.every((s) => s.sourceType === "manual"),
   );
@@ -109,6 +110,11 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
             </section>
           ))
         )}
+        <div className="flex justify-end">
+          <SubmitButton className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800">
+            Save &amp; Continue
+          </SubmitButton>
+        </div>
       </form>
 
       {staples.length > 0 ? (
@@ -136,9 +142,9 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
                 <form action={removeStapleItem}>
                   <input type="hidden" name="planId" value={planId} />
                   <input type="hidden" name="id" value={i.id} />
-                  <button className="btn-secondary text-xs">
+                  <SubmitButton pendingChildren="Removing..." className="btn-secondary text-xs">
                     Remove
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -174,20 +180,14 @@ export default async function StaplesStep({ params }: { params: Promise<{ id: st
               ))}
             </select>
           </label>
-          <button className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90">
+          <SubmitButton
+            pendingChildren="Adding..."
+            className="rounded bg-aldi-navy px-3 py-1.5 text-sm text-white hover:bg-aldi-navy/90"
+          >
             Add
-          </button>
+          </SubmitButton>
         </form>
       </section>
-
-      <div className="flex justify-end">
-        <button
-          form="staples-form"
-          className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800"
-        >
-          Save &amp; Continue →
-        </button>
-      </div>
     </div>
   );
 }

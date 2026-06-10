@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getRestockSuggestions } from "@/app/staples/data";
 import SelectAllCheckboxesButton from "@/components/SelectAllCheckboxesButton";
+import SubmitButton from "@/components/SubmitButton";
 import { getPlanWithList } from "../data";
 import { saveRestockSelections } from "../actions";
 
@@ -114,9 +115,9 @@ export default async function RestockStep({ params }: { params: Promise<{ id: st
           ) : (
             <span />
           )}
-          <button className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800">
+          <SubmitButton className="rounded bg-green-700 px-4 py-2 text-sm text-white hover:bg-green-800">
             Save &amp; Continue →
-          </button>
+          </SubmitButton>
         </div>
       </form>
     </div>
