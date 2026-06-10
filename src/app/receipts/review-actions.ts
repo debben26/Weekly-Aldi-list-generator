@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import * as review from "@/app/receipts/review";
+import { linkReceiptToTrip } from "@/app/receipts/trip-link";
 
 // Thin "use server" wrappers over the testable review core (see review.ts). Each parses FormData,
 // calls the core operation, and revalidates the receipt page the buttons live on.
@@ -47,4 +48,17 @@ export async function skipLine(formData: FormData): Promise<void> {
   if (!lineId) return;
   const receiptId = await review.skipLine(lineId);
   revalidatePath(`/receipts/${receiptId}`);
+}
+
+// Link (or unlink, with an empty selection) this receipt to a trip — backfills the trip's paid
+// prices from the receipt. Errors (trip already linked elsewhere) are logged, not surfaced: the
+// picker disables already-linked trips, so they only occur on a stale page.
+export async function linkReceiptTrip(formData: FormData): Promise<void> {
+  const receiptId = String(formData.get("receiptId") ?? "");
+  if (!receiptId) return;
+  const tripSnapshotId = String(formData.get("tripSnapshotId") ?? "").trim() || null;
+  const result = await linkReceiptToTrip(receiptId, tripSnapshotId);
+  if (!result.ok) console.error(`Trip link failed for receipt ${receiptId}: ${result.error}`);
+  revalidatePath(`/receipts/${receiptId}`);
+  revalidatePath("/history");
 }

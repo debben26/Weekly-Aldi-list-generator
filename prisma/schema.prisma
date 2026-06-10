@@ -392,6 +392,7 @@ model TripSnapshot {
   household    Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
   shoppingList ShoppingList?      @relation(fields: [shoppingListId], references: [id], onDelete: SetNull)
   items        TripSnapshotItem[]
+  receipt      Receipt?
 }
 
 // FROZEN line item. Display values captured at completion; itemId is a plain column (NO FK)
@@ -457,8 +458,14 @@ model Receipt {
   dedupeHash   String              @unique // hash(store + purchase_date + total)
   createdAt    DateTime            @default(now())
 
-  store Store             @relation(fields: [storeId], references: [id])
-  lines ReceiptLineItem[]
+  // Optional link to the trip this receipt pays for; the linked receipt OWNS the trip's paid
+  // data (totalPaid / item paidPrice). @unique: one receipt per trip. SetNull: deleting the
+  // trip keeps the receipt.
+  tripSnapshotId String? @unique
+
+  store        Store             @relation(fields: [storeId], references: [id])
+  lines        ReceiptLineItem[]
+  tripSnapshot TripSnapshot?     @relation(fields: [tripSnapshotId], references: [id], onDelete: SetNull)
 
   @@index([storeId, purchaseDate])
 }

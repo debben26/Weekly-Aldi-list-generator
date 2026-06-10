@@ -1,10 +1,12 @@
 import Link from "next/link";
 import ReceiptImportForm from "@/components/ReceiptImportForm";
 import ReceiptParsingPrompt from "@/components/ReceiptParsingPrompt";
+import { loadRecentTrips } from "@/app/receipts/trip-link";
 
 export const dynamic = "force-dynamic";
 
-export default function ImportReceiptPage() {
+export default async function ImportReceiptPage() {
+  const trips = await loadRecentTrips();
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -31,7 +33,7 @@ export default function ImportReceiptPage() {
             </p>
           </div>
 
-          <ReceiptImportForm />
+          <ReceiptImportForm trips={trips} />
         </div>
 
         <ReceiptParsingPrompt />

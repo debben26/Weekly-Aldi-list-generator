@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import ReceiptReviewLine, { type ReviewLine } from "@/components/ReceiptReviewLine";
+import { loadRecentTrips, type TripOption } from "@/app/receipts/trip-link";
+import { linkReceiptTrip } from "@/app/receipts/review-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,11 @@ function money(currency: string, value: { toString(): string } | null): string |
   return `${prefix}${Number(value).toFixed(2)}`;
 }
 
+function tripOptionLabel(t: TripOption): string {
+  const est = t.totalEstimated != null ? ` · est $${t.totalEstimated.toFixed(2)}` : "";
+  return `Week of ${t.weekStart} · ${t.storeName}${est}`;
+}
+
 export default async function ReceiptDetailPage({
   params,
 }: {
@@ -22,11 +29,12 @@ export default async function ReceiptDetailPage({
 }) {
   const { id } = await params;
 
-  const [receipt, items, sections] = await Promise.all([
+  const [receipt, items, sections, trips] = await Promise.all([
     prisma.receipt.findUnique({
       where: { id },
       include: {
         store: true,
+        tripSnapshot: { select: { id: true } },
         lines: {
           orderBy: { id: "asc" },
           include: { matchedItem: { select: { id: true, canonicalName: true } } },
@@ -43,6 +51,7 @@ export default async function ReceiptDetailPage({
       orderBy: { sortOrder: "asc" },
       select: { id: true, name: true },
     }),
+    loadRecentTrips(),
   ]);
 
   if (!receipt) notFound();
@@ -87,6 +96,38 @@ export default async function ReceiptDetailPage({
           {completed ? "Completed" : `${resolved} of ${total} lines resolved`}
         </span>
       </div>
+
+      {/* Trip link: the linked trip's paidPrice/totalPaid are backfilled from this receipt. */}
+      <form
+        action={linkReceiptTrip}
+        className="flex flex-wrap items-center gap-3 rounded border border-gray-200 bg-white px-4 py-3 text-sm"
+      >
+        <input type="hidden" name="receiptId" value={receipt.id} />
+        <span className="font-medium text-gray-700">Linked trip</span>
+        <select
+          name="tripSnapshotId"
+          defaultValue={receipt.tripSnapshot?.id ?? ""}
+          className="input max-w-xs text-sm"
+        >
+          <option value="">Not linked</option>
+          {trips.map((t) => (
+            <option
+              key={t.id}
+              value={t.id}
+              disabled={t.receiptId != null && t.receiptId !== receipt.id}
+            >
+              {tripOptionLabel(t)}
+              {t.receiptId != null && t.receiptId !== receipt.id ? " (already linked)" : ""}
+            </option>
+          ))}
+        </select>
+        <button type="submit" className="btn-secondary text-sm">
+          Save
+        </button>
+        <span className="text-xs text-gray-500">
+          Linking fills the trip&apos;s paid prices from this receipt.
+        </span>
+      </form>
 
       <div className="overflow-hidden card">
         <ul className="divide-y divide-gray-100">

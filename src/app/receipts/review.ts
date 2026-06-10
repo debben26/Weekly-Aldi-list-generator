@@ -3,6 +3,7 @@ import { dimensionForPurchaseUnit } from "@/services/UnitService";
 import { normalizeText } from "@/services/ItemMergeService";
 import { recomputeImportStatus } from "@/app/receipts/match";
 import { syncLineObservation } from "@/app/receipts/observations";
+import { syncTripPaidData } from "@/app/receipts/trip-link";
 
 // Review-queue core (phase2-receipts-spec.md §6.2 / M2). Plain module (like import.ts) so it is
 // unit/integration testable; the "use server" actions in review-actions.ts are thin wrappers that
@@ -42,6 +43,7 @@ export async function setLineMatch(lineId: string, itemId: string): Promise<stri
   });
   await learnAlias(itemId, line.normalizedName);
   await syncLineObservation(lineId); // M3: confirmed match → write/repoint the paid observation
+  await syncTripPaidData(line.receiptId); // no-op unless the receipt is linked to a trip
   await recomputeImportStatus(line.receiptId);
   return line.receiptId;
 }
@@ -105,6 +107,7 @@ export async function createItemForLine(
 
   await learnAlias(itemId, line.normalizedName);
   await syncLineObservation(lineId); // M3: new item → write the paid observation
+  await syncTripPaidData(line.receiptId); // no-op unless the receipt is linked to a trip
   await recomputeImportStatus(line.receiptId);
   return { ok: true, receiptId: line.receiptId };
 }
@@ -117,6 +120,7 @@ export async function skipLine(lineId: string): Promise<string> {
     select: { receiptId: true },
   });
   await syncLineObservation(lineId); // M3: skipped → remove any prior paid observation
+  await syncTripPaidData(line.receiptId); // no-op unless the receipt is linked to a trip
   await recomputeImportStatus(line.receiptId);
   return line.receiptId;
 }

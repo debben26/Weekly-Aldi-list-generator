@@ -11,6 +11,7 @@ export type ImportFormState = {
   error?: string;
   warnings?: string[];
   pendingJson?: string;
+  pendingTripSnapshotId?: string;
 };
 
 export async function importReceiptAction(
@@ -20,6 +21,7 @@ export async function importReceiptAction(
   const file = formData.get("file");
   const pasted = String(formData.get("json") ?? "");
   const acknowledgeWarnings = String(formData.get("acknowledgeWarnings") ?? "") === "true";
+  const tripSnapshotId = String(formData.get("tripSnapshotId") ?? "").trim() || undefined;
 
   let jsonText = pasted.trim();
   if (file instanceof File && file.size > 0) {
@@ -29,14 +31,18 @@ export async function importReceiptAction(
     return { error: "Choose a .json file or paste the JSON the chat produced." };
   }
 
-  const result = await importReceipt(jsonText, { acknowledgeWarnings });
+  const result = await importReceipt(jsonText, { acknowledgeWarnings, tripSnapshotId });
 
   switch (result.status) {
     case "error":
     case "duplicate":
       return { error: result.error };
     case "needs_confirmation":
-      return { warnings: result.warnings, pendingJson: jsonText };
+      return {
+        warnings: result.warnings,
+        pendingJson: jsonText,
+        pendingTripSnapshotId: tripSnapshotId,
+      };
     case "imported":
       revalidatePath("/receipts");
       redirect("/receipts");

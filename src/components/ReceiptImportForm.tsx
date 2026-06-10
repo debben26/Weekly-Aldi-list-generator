@@ -2,11 +2,17 @@
 
 import { useActionState } from "react";
 import { importReceiptAction, type ImportFormState } from "@/app/receipts/actions";
+import type { TripOption } from "@/app/receipts/trip-link";
 
 // Import Receipt screen (phase2 §9). Accepts a .json file OR pasted text. Validation errors block;
 // reconciliation mismatches come back as warnings with a "proceed anyway" confirmation (the JSON is
 // echoed back as pendingJson so the user doesn't have to re-pick the file).
-export default function ReceiptImportForm() {
+function tripOptionLabel(t: TripOption): string {
+  const est = t.totalEstimated != null ? ` · est $${t.totalEstimated.toFixed(2)}` : "";
+  return `Week of ${t.weekStart} · ${t.storeName}${est}`;
+}
+
+export default function ReceiptImportForm({ trips }: { trips: TripOption[] }) {
   const [state, formAction, pending] = useActionState(importReceiptAction, {} as ImportFormState);
   const needsConfirmation = !!state.warnings?.length && !!state.pendingJson;
 
@@ -32,6 +38,7 @@ export default function ReceiptImportForm() {
           <form action={formAction} className="flex items-center gap-3">
             <input type="hidden" name="json" value={state.pendingJson} />
             <input type="hidden" name="acknowledgeWarnings" value="true" />
+            <input type="hidden" name="tripSnapshotId" value={state.pendingTripSnapshotId ?? ""} />
             <button
               type="submit"
               disabled={pending}
@@ -62,6 +69,23 @@ export default function ReceiptImportForm() {
             placeholder='{ "store": "Aldi", "purchase_date": "2026-06-05", ... }'
           />
         </label>
+
+        {trips.length > 0 ? (
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-gray-700">
+              Link to a trip (fills in what you actually paid)
+            </span>
+            <select name="tripSnapshotId" defaultValue="" className="input text-sm">
+              <option value="">Don&apos;t link to a trip</option>
+              {trips.map((t) => (
+                <option key={t.id} value={t.id} disabled={t.receiptId != null}>
+                  {tripOptionLabel(t)}
+                  {t.receiptId != null ? " (already linked)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <button
           type="submit"

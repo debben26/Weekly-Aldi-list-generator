@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getDefaultStore } from "@/lib/context";
 import { parseAndValidate } from "@/services/ReceiptImportService";
 import { applyMatching } from "@/app/receipts/match";
+import { linkReceiptToTrip } from "@/app/receipts/trip-link";
 
 // Receipt import core (phase2-receipts-spec.md §6.1 / M1). Plain module (like grocery-list/
 // restock.ts and complete.ts) so it is unit/integration testable; the "use server" action in
@@ -31,7 +32,7 @@ export type ImportResult =
 
 export async function importReceipt(
   jsonText: string,
-  opts: { acknowledgeWarnings?: boolean } = {},
+  opts: { acknowledgeWarnings?: boolean; tripSnapshotId?: string } = {},
 ): Promise<ImportResult> {
   const result = parseAndValidate(jsonText);
   if (!result.ok) return { status: "error", error: result.error };
@@ -90,6 +91,18 @@ export async function importReceipt(
       await applyMatching(created.id);
     } catch (matchErr) {
       console.error(`Receipt ${created.id} imported but auto-matching failed:`, matchErr);
+    }
+    // Same shield: a trip-link failure must not fail the already-persisted import. The link can
+    // be set later from the receipt page.
+    if (opts.tripSnapshotId) {
+      try {
+        const linked = await linkReceiptToTrip(created.id, opts.tripSnapshotId);
+        if (!linked.ok) {
+          console.error(`Receipt ${created.id} imported but trip link failed: ${linked.error}`);
+        }
+      } catch (linkErr) {
+        console.error(`Receipt ${created.id} imported but trip link failed:`, linkErr);
+      }
     }
     return { status: "imported", receiptId: created.id, warnings };
   } catch (e: unknown) {
