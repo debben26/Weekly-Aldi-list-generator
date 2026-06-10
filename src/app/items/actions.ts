@@ -86,6 +86,56 @@ export async function setItemSection(formData: FormData) {
   revalidatePath("/items");
 }
 
+const CATALOG_PRICE_CONFIDENCE = "manual catalog";
+
+// Inline catalog price override. Prices live in PriceObservation so estimates/history keep one
+// source of truth; blank removes the current catalog override and falls back to receipt history.
+export async function setItemManualPrice(formData: FormData) {
+  const itemId = String(formData.get("id") ?? "");
+  const priceRaw = String(formData.get("price") ?? "").trim();
+  if (!itemId) return;
+
+  const store = await prisma.store.findFirst({
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+    select: { id: true },
+  });
+  if (!store) return;
+
+  const overrideWhere = {
+    itemId,
+    storeId: store.id,
+    sourceType: "manual" as const,
+    receiptLineItemId: null,
+    confidence: CATALOG_PRICE_CONFIDENCE,
+  };
+
+  if (priceRaw === "") {
+    await prisma.priceObservation.deleteMany({ where: overrideWhere });
+    revalidatePath("/items");
+    return;
+  }
+
+  const price = Number(priceRaw);
+  if (!Number.isFinite(price) || price < 0) {
+    revalidatePath("/items");
+    return;
+  }
+
+  const data = {
+    amount: price,
+    unitPrice: price,
+    currency: "USD",
+    observedDate: new Date(),
+    sourceType: "manual" as const,
+    confidence: CATALOG_PRICE_CONFIDENCE,
+    notes: "Catalog price correction",
+  };
+
+  await prisma.priceObservation.deleteMany({ where: overrideWhere });
+  await prisma.priceObservation.create({ data: { ...data, itemId, storeId: store.id } });
+  revalidatePath("/items");
+}
+
 // Soft-delete / reactivate (spec 10.3: active flags for reusable config; never hard-delete).
 export async function setItemActive(formData: FormData) {
   const id = String(formData.get("id") ?? "");

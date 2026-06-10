@@ -10,6 +10,9 @@ export type OrderLineInput = {
   quantity: number; // purchase units (default 1 upstream)
   taxable: boolean;
   estimate: PriceEstimate; // per single purchase unit
+  sectionId?: string | null;
+  sectionName?: string | null;
+  sectionSort?: number | null;
 };
 
 export type OrderLineEstimate = {
@@ -22,6 +25,9 @@ export type OrderLineEstimate = {
   basis: string;
   taxable: boolean;
   fromHistory: boolean; // backed by real observations (not a fallback guess)
+  sectionId: string | null;
+  sectionName: string;
+  sectionSort: number;
 };
 
 export type OrderEstimate = {
@@ -54,6 +60,9 @@ export function estimateOrder(lines: OrderLineInput[], taxRate: number): OrderEs
     basis: l.estimate.basis,
     taxable: l.taxable,
     fromHistory: l.estimate.observationCount > 0,
+    sectionId: l.sectionId ?? null,
+    sectionName: l.sectionName ?? "Other",
+    sectionSort: l.sectionSort ?? 10000,
   }));
 
   const sum = (pick: (e: OrderLineEstimate) => number) =>

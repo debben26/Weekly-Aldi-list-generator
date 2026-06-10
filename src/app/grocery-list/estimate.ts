@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { windowStart } from "@/services/AnalyticsService";
 import {
   estimateItemPrice,
+  type PriceEstimate,
   type ObservationPoint,
   type EstimateFallbacks,
 } from "@/services/PriceEstimationService";
@@ -16,8 +17,22 @@ import { DEFAULT_TAX_RATE } from "@/lib/constants";
 // fetch the real paid observations for the list's store within the 6-month window, resolve each
 // line's per-item estimate (§8.1) + taxability, then hand off to the pure OrderEstimationService.
 
-// Only real PAID prices feed known/sparse estimates; estimated/seeded prices are a 0-obs fallback.
+const CATALOG_PRICE_CONFIDENCE = "manual catalog";
+
+// Real paid prices feed known/sparse estimates; catalog manual prices are handled as overrides.
 const REAL_PRICE_SOURCES = ["receipt", "manual"] as const;
+
+function catalogOverrideEstimate(price: number): PriceEstimate {
+  return {
+    point: Math.round(price * 100) / 100,
+    low: Math.round(price * 100) / 100,
+    high: Math.round(price * 100) / 100,
+    confidence: "medium",
+    basis: "manual catalog override",
+    observationCount: 0,
+    lastObserved: null,
+  };
+}
 
 export async function estimateListOrder(
   listId: string,
@@ -34,6 +49,7 @@ export async function estimateListOrder(
           quantity: true,
           itemId: true,
           sectionId: true,
+          section: { select: { name: true, sortOrder: true } },
           item: { select: { taxable: true, defaultSectionId: true } },
         },
       },
@@ -49,6 +65,7 @@ export async function estimateListOrder(
       storeId: list.storeId,
       observedDate: { gte: since },
       sourceType: { in: [...REAL_PRICE_SOURCES] },
+      OR: [{ confidence: null }, { NOT: { confidence: CATALOG_PRICE_CONFIDENCE } }],
     },
     select: { itemId: true, unitPrice: true, observedDate: true },
   });
@@ -72,6 +89,26 @@ export async function estimateListOrder(
   const baselineByItem = new Map<string, number>();
   for (const b of baselines) {
     if (!baselineByItem.has(b.itemId)) baselineByItem.set(b.itemId, Number(b.unitPrice ?? b.amount));
+  }
+
+  // Catalog manual overrides replace receipt-derived history for the item when present.
+  const overrides = await prisma.priceObservation.findMany({
+    where: {
+      storeId: list.storeId,
+      sourceType: "manual",
+      confidence: CATALOG_PRICE_CONFIDENCE,
+    },
+    orderBy: { observedDate: "desc" },
+    select: { itemId: true, unitPrice: true, amount: true, observedDate: true },
+  });
+  const overrideByItem = new Map<string, ObservationPoint>();
+  for (const o of overrides) {
+    if (!overrideByItem.has(o.itemId)) {
+      overrideByItem.set(o.itemId, {
+        unitPrice: Number(o.unitPrice ?? o.amount),
+        observedDate: o.observedDate,
+      });
+    }
   }
 
   // Section averages: mean of the point estimates of items that HAVE history, grouped by their
@@ -118,6 +155,7 @@ export async function estimateListOrder(
   );
 
   const orderLines: OrderLineInput[] = list.items.map((li) => {
+    const override = li.itemId ? overrideByItem.get(li.itemId) : undefined;
     const obs = li.itemId ? (obsByItem.get(li.itemId) ?? []) : [];
     // Borrow the section average / name by the item's catalog section — the key sectionAvg is keyed
     // by. Falling back to li.sectionId here would look up a key sectionAvg never holds (it is built
@@ -132,9 +170,18 @@ export async function estimateListOrder(
       displayName: li.displayName,
       quantity: li.quantity ?? 1,
       taxable: li.item?.taxable ?? false,
-      estimate: estimateItemPrice(obs, fallbacks),
+      estimate: override
+        ? catalogOverrideEstimate(override.unitPrice)
+        : estimateItemPrice(obs, fallbacks),
+      sectionId: li.sectionId,
+      sectionName: li.section?.name ?? "Other",
+      sectionSort: li.section?.sortOrder ?? 10000,
     };
-  });
+  }).sort(
+    (a, b) =>
+      (a.sectionSort ?? 10000) - (b.sectionSort ?? 10000) ||
+      a.displayName.localeCompare(b.displayName),
+  );
 
   return estimateOrder(orderLines, DEFAULT_TAX_RATE);
 }

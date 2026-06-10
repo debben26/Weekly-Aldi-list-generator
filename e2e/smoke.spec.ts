@@ -19,7 +19,7 @@ test("dashboard renders seeded foundation", async ({ page }) => {
 });
 
 for (const { label, path, heading } of ROUTES) {
-  test(`route ${path} loads`, async ({ page }) => {
+  test(`route ${label} loads`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
   });
@@ -31,7 +31,7 @@ test("top nav links navigate between sections", async ({ page }) => {
   await expect(page).toHaveURL(/\/recipes$/);
   await expect(page.getByRole("heading", { level: 1, name: /Recipes/ })).toBeVisible();
 
-  await page.getByRole("link", { name: "Pantry", exact: true }).click();
-  await expect(page).toHaveURL(/\/pantry$/);
-  await expect(page.getByRole("heading", { level: 1, name: /Pantry/ })).toBeVisible();
+  await page.getByRole("link", { name: "Items", exact: true }).click();
+  await expect(page).toHaveURL(/\/items$/);
+  await expect(page.getByRole("heading", { level: 1, name: /Items/ })).toBeVisible();
 });

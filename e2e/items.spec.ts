@@ -19,6 +19,19 @@ test("create item validates required name", async ({ page }) => {
   await expect(page).toHaveURL(/\/items\/new$/);
 });
 
+test("edit an item catalog price inline", async ({ page }) => {
+  const name = `E2E Price ${uid()}`;
+  await createItem(page, name, "bag");
+
+  const price = page.getByLabel(`${name} price`);
+  await price.fill("4.29");
+  await page.getByRole("button", { name: `Save price for ${name}` }).click();
+  await expect(price).toHaveValue("4.29");
+
+  await page.reload();
+  await expect(page.getByLabel(`${name} price`)).toHaveValue("4.29");
+});
+
 test("add a weekly staple rule for an item", async ({ page }) => {
   const name = `E2E Staple ${uid()}`;
   await createItem(page, name, "bag");

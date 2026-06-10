@@ -54,6 +54,21 @@ describe("estimateOrder", () => {
     expect(mystery!.confidence).toBe("low");
   });
 
+  it("preserves section metadata for grouped review displays", () => {
+    const o = estimateOrder(
+      [
+        { ...lines[0], sectionId: "dairy", sectionName: "Dairy", sectionSort: 2 },
+        { ...lines[1], sectionId: "paper", sectionName: "Paper", sectionSort: 4 },
+      ],
+      0,
+    );
+
+    expect(o.lines.map((l) => [l.displayName, l.sectionId, l.sectionName, l.sectionSort])).toEqual([
+      ["Milk", "dairy", "Dairy", 2],
+      ["Paper Towels", "paper", "Paper", 4],
+    ]);
+  });
+
   it("zero tax rate yields subtotal = total", () => {
     const o = estimateOrder(lines, 0);
     expect(o.tax.point).toBe(0);

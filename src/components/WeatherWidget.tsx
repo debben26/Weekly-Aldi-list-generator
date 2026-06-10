@@ -52,8 +52,12 @@ export default function WeatherWidget({ weekStart }: { weekStart: string }) {
     let cancelled = false;
 
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setStatus("denied");
-      return;
+      setTimeout(() => {
+        if (!cancelled) setStatus("denied");
+      }, 0);
+      return () => {
+        cancelled = true;
+      };
     }
 
     navigator.geolocation.getCurrentPosition(

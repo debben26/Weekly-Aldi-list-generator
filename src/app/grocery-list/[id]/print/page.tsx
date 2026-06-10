@@ -37,9 +37,12 @@ export default async function PrintList({ params }: { params: Promise<{ id: stri
     ...new Set(list.items.flatMap((i) => i.sources.map((s) => s.recipeId).filter(Boolean))),
   ] as string[];
   const recipeTitles = new Map(
-    (await prisma.recipe.findMany({ where: { id: { in: recipeIds } }, select: { id: true, title: true } })).map(
-      (r) => [r.id, r.title],
-    ),
+    (
+      await prisma.recipe.findMany({
+        where: { id: { in: recipeIds } },
+        select: { id: true, title: true },
+      })
+    ).map((r) => [r.id, r.title]),
   );
   const labelFor = (s: { recipeId: string | null; sourceType: string }) =>
     s.recipeId ? (recipeTitles.get(s.recipeId) ?? "Recipe") : SOURCE_LABELS[s.sourceType];
@@ -59,16 +62,16 @@ export default async function PrintList({ params }: { params: Promise<{ id: stri
     <div className="mx-auto max-w-3xl">
       <div className="no-print mb-4 flex items-center justify-between">
         <Link href={`/grocery-list/${list.id}`} className="text-sm text-gray-500 hover:text-gray-900">
-          ← Back
+          Back
         </Link>
         <PrintButton />
       </div>
 
       <h1 className="text-xl font-bold">
-        {list.store.brand} · {list.store.name}
+        {list.store.brand} - {list.store.name}
       </h1>
-      <p className="mb-4 text-sm text-gray-600">
-        Shopping list — week of {list.weekStart.toISOString().slice(0, 10)}
+      <p className="mb-4 text-sm text-gray-800">
+        Shopping list - week of {list.weekStart.toISOString().slice(0, 10)}
       </p>
 
       {orderedGroups.map((g) => (
@@ -82,14 +85,18 @@ export default async function PrintList({ params }: { params: Promise<{ id: stri
                 it.quantity != null
                   ? `${fmtQ(it.quantity)} ${it.unit ?? ""}`.trim()
                   : it.sources
-                      .map((s) => `${fmtQ(s.quantity)} ${s.unit ?? ""} [${labelFor(s)}]`.replace(/\s+/g, " ").trim())
+                      .map((s) =>
+                        `${fmtQ(s.quantity)} ${s.unit ?? ""} [${labelFor(s)}]`
+                          .replace(/\s+/g, " ")
+                          .trim(),
+                      )
                       .join(" + ");
               return (
                 <li key={it.id} className="flex items-baseline gap-2 py-0.5 text-sm">
                   <span className="inline-block h-3.5 w-3.5 flex-shrink-0 border border-gray-700" />
                   <span className="font-medium">{it.displayName}</span>
-                  {qty ? <span className="text-gray-600">— {qty}</span> : null}
-                  {it.notes ? <span className="text-gray-500">({it.notes})</span> : null}
+                  {qty ? <span className="text-gray-800">- {qty}</span> : null}
+                  {it.notes ? <span className="text-gray-700">({it.notes})</span> : null}
                 </li>
               );
             })}
@@ -97,7 +104,7 @@ export default async function PrintList({ params }: { params: Promise<{ id: stri
         </section>
       ))}
 
-      {list.items.length === 0 ? <p className="text-sm text-gray-500">List is empty.</p> : null}
+      {list.items.length === 0 ? <p className="text-sm text-gray-800">List is empty.</p> : null}
     </div>
   );
 }

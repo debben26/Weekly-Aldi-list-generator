@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { setItemSection, setItemActive } from "./actions";
+import { setItemSection, setItemActive, setItemManualPrice } from "./actions";
 
 type Item = {
   id: string;
@@ -11,12 +11,15 @@ type Item = {
   active: boolean;
   purchaseUnit: string;
   defaultSectionId: string | null;
+  currentPrice: number | null;
 };
 type Section = { id: string; name: string };
 
 // One catalog row. The section dropdown auto-saves on change (and regroups the list); the
 // name still links to the detail page, and Delete soft-deletes (deactivates) the item.
 export default function ItemRow({ item, sections }: { item: Item; sections: Section[] }) {
+  const priceValue = item.currentPrice == null ? "" : item.currentPrice.toFixed(2);
+
   function submitOnChange(e: React.SyntheticEvent<HTMLElement>) {
     (e.currentTarget as HTMLElement).closest("form")?.requestSubmit();
   }
@@ -25,7 +28,7 @@ export default function ItemRow({ item, sections }: { item: Item; sections: Sect
     <li className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
       <Link
         href={`/items/${item.id}`}
-        className={`min-w-0 flex-1 truncate hover:underline ${
+        className={`min-w-64 flex-1 truncate hover:underline ${
           item.active ? "" : "text-gray-400 line-through"
         }`}
       >
@@ -56,6 +59,32 @@ export default function ItemRow({ item, sections }: { item: Item; sections: Sect
               </option>
             ))}
           </select>
+        </form>
+
+        <form key={`${item.id}:price:${priceValue}`} action={setItemManualPrice}>
+          <input type="hidden" name="id" value={item.id} />
+          <div className="flex items-center gap-1">
+            <label className="flex items-center gap-1 text-xs text-gray-500">
+              <span>$</span>
+              <input
+                name="price"
+                type="number"
+                min="0"
+                step="0.01"
+                defaultValue={priceValue}
+                className="input w-20 text-right"
+                aria-label={`${item.canonicalName} price`}
+                placeholder="0.00"
+              />
+            </label>
+            <button
+              type="submit"
+              className="btn-secondary px-2 py-1"
+              aria-label={`Save price for ${item.canonicalName}`}
+            >
+              Save
+            </button>
+          </div>
         </form>
 
         <span className="w-16 text-right text-gray-500">{item.purchaseUnit}</span>

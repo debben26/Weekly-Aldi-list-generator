@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { windowStart } from "@/services/AnalyticsService";
+import { estimateItemPrice, type ObservationPoint } from "@/services/PriceEstimationService";
 import ItemRow from "./ItemRow";
 
 export const dynamic = "force-dynamic";
+
+const CATALOG_PRICE_CONFIDENCE = "manual catalog";
 
 export default async function ItemsPage({
   searchParams,
@@ -11,6 +15,10 @@ export default async function ItemsPage({
 }) {
   const { show } = await searchParams;
   const includeInactive = show === "all";
+  const defaultStore = await prisma.store.findFirst({
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+    select: { id: true },
+  });
 
   const sections = await prisma.storeSection.findMany({
     orderBy: { sortOrder: "asc" },
@@ -18,6 +26,18 @@ export default async function ItemsPage({
       itemsDefault: {
         where: includeInactive ? {} : { active: true },
         orderBy: { canonicalName: "asc" },
+        include: {
+          priceObservations: {
+            where: {
+              sourceType: "manual",
+              receiptLineItemId: null,
+              confidence: CATALOG_PRICE_CONFIDENCE,
+              ...(defaultStore ? { storeId: defaultStore.id } : {}),
+            },
+            orderBy: { observedDate: "desc" },
+            take: 1,
+          },
+        },
       },
     },
   });
@@ -26,6 +46,18 @@ export default async function ItemsPage({
   const unsectioned = await prisma.item.findMany({
     where: { defaultSectionId: null, ...(includeInactive ? {} : { active: true }) },
     orderBy: { canonicalName: "asc" },
+    include: {
+      priceObservations: {
+        where: {
+          sourceType: "manual",
+          receiptLineItemId: null,
+          confidence: CATALOG_PRICE_CONFIDENCE,
+          ...(defaultStore ? { storeId: defaultStore.id } : {}),
+        },
+        orderBy: { observedDate: "desc" },
+        take: 1,
+      },
+    },
   });
 
   const inactiveCount = await prisma.item.count({ where: { active: false } });
@@ -42,8 +74,46 @@ export default async function ItemsPage({
       : []),
   ].filter((g) => g.items.length > 0);
 
+  const itemIds = groups.flatMap((g) => g.items.map((item) => item.id));
+  const receiptObservations =
+    defaultStore && itemIds.length
+      ? await prisma.priceObservation.findMany({
+          where: {
+            itemId: { in: itemIds },
+            storeId: defaultStore.id,
+            observedDate: { gte: windowStart(new Date()) },
+            sourceType: { in: ["receipt", "manual"] },
+            OR: [{ confidence: null }, { NOT: { confidence: CATALOG_PRICE_CONFIDENCE } }],
+          },
+          select: { itemId: true, unitPrice: true, observedDate: true },
+        })
+      : [];
+  const obsByItem = new Map<string, ObservationPoint[]>();
+  for (const o of receiptObservations) {
+    if (o.unitPrice == null) continue;
+    const arr = obsByItem.get(o.itemId) ?? [];
+    arr.push({ unitPrice: Number(o.unitPrice), observedDate: o.observedDate });
+    obsByItem.set(o.itemId, arr);
+  }
+
+  const rowItem = (item: (typeof groups)[number]["items"][number]) => ({
+    id: item.id,
+    canonicalName: item.canonicalName,
+    variant: item.variant,
+    aldiFriendly: item.aldiFriendly,
+    active: item.active,
+    purchaseUnit: item.purchaseUnit,
+    defaultSectionId: item.defaultSectionId,
+    currentPrice:
+      item.priceObservations[0]?.amount == null
+        ? obsByItem.has(item.id)
+          ? estimateItemPrice(obsByItem.get(item.id)!).point
+          : null
+        : Number(item.priceObservations[0].amount),
+  });
+
   return (
-    <div className="mx-auto max-w-lg space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Items</h1>
@@ -75,7 +145,7 @@ export default async function ItemsPage({
           </h2>
           <ul className="divide-y divide-gray-50">
             {g.items.map((item) => (
-              <ItemRow key={item.id} item={item} sections={sectionOptions} />
+              <ItemRow key={item.id} item={rowItem(item)} sections={sectionOptions} />
             ))}
           </ul>
         </section>
