@@ -145,8 +145,11 @@ export default async function StaplesStep({
       </form>
 
       {staples.length > 0 ? (
-        <div className="flex justify-start">
+        <div className="flex justify-start gap-2">
           <SelectAllCheckboxesButton formId="staples-form" name="ruleIds" />
+          <SelectAllCheckboxesButton formId="staples-form" name="ruleIds" checked={false}>
+            Deselect all
+          </SelectAllCheckboxesButton>
         </div>
       ) : null}
 

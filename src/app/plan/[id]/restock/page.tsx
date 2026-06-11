@@ -137,7 +137,12 @@ export default async function RestockStep({
 
         <div className="flex items-center justify-between">
           {restock.length > 0 ? (
-            <SelectAllCheckboxesButton formId="restock-form" name="ruleIds" />
+            <div className="flex gap-2">
+              <SelectAllCheckboxesButton formId="restock-form" name="ruleIds" />
+              <SelectAllCheckboxesButton formId="restock-form" name="ruleIds" checked={false}>
+                Deselect all
+              </SelectAllCheckboxesButton>
+            </div>
           ) : (
             <span />
           )}
