@@ -4,16 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createManualListItem } from "@/lib/manual-list-items";
+import { num } from "@/lib/forms";
 import { generateFromMealPlan } from "./generate";
 import { completeTrip } from "./complete";
 import { addRestock } from "./restock";
-
-function num(v: FormDataEntryValue | null): number | null {
-  const s = String(v ?? "").trim();
-  if (s === "") return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
 
 export async function generateList(formData: FormData) {
   const mealPlanId = String(formData.get("mealPlanId") ?? "");
@@ -21,8 +15,15 @@ export async function generateList(formData: FormData) {
   // pantryOverride fields carry item ids the user has explicitly opted to include despite
   // their pantry status being "have" (spec 8.1 step 5 / 6.6 user override).
   const overrideIds = formData.getAll("pantryOverride").map(String).filter(Boolean);
-  const listId = await generateFromMealPlan(mealPlanId, new Set(overrideIds));
-  redirect(`/grocery-list/${listId}`);
+  let listId: string;
+  try {
+    listId = await generateFromMealPlan(mealPlanId, new Set(overrideIds));
+  } catch (e) {
+    // e.g. a completed trip already exists for that week — show the page's error banner.
+    const msg = e instanceof Error ? e.message : "Could not build the grocery list.";
+    redirect(`/grocery-list?error=${encodeURIComponent(msg)}`);
+  }
+  redirect(`/grocery-list/${listId!}`);
 }
 
 export async function finalizeTrip(formData: FormData) {

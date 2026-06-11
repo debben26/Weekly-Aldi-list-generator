@@ -1,16 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { findOrCreateItem } from "@/lib/items";
+import { num } from "@/lib/forms";
 
 export type ManualListItemResult =
   | { ok: true; id: string }
   | { ok: false; error: string };
-
-function num(v: FormDataEntryValue | null): number | null {
-  const s = String(v ?? "").trim();
-  if (s === "") return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
 
 // Shared one-off list add used by the wizard and final grocery list. A typed new item
 // creates/reuses catalog data; a picked item keeps the list row linked for history/analytics.

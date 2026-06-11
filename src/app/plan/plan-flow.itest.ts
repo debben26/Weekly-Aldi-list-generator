@@ -181,6 +181,36 @@ describe("meals-first wizard actions", () => {
     ).rejects.toThrow(`REDIRECT:/plan/${planId}/restock`);
     expect(await prisma.shoppingListItem.findFirst({ where: { shoppingListId: list.id, itemId: weeklyItemId } })).toBeNull();
 
+    // A row that ALSO came from a recipe must survive a staple uncheck: only the staple
+    // source/label is stripped, the recipe provenance (and the row) stay.
+    const dualRow = await prisma.shoppingListItem.create({
+      data: {
+        shoppingListId: list.id,
+        itemId: weeklyItemId,
+        displayName: `${TAG} Milk`,
+        quantity: 1,
+        unit: "gallon",
+        sourceSummary: "Tacos + Weekly Staples",
+        sources: {
+          create: [
+            { sourceType: "recipe", quantity: 1, unit: "cup" },
+            { sourceType: "weekly_staple", quantity: 1, unit: "gallon" },
+          ],
+        },
+      },
+    });
+    await expect(
+      saveStapleSelections(fd({ planId, listId: list.id })),
+    ).rejects.toThrow(`REDIRECT:/plan/${planId}/restock`);
+    const survivor = await prisma.shoppingListItem.findUnique({
+      where: { id: dualRow.id },
+      include: { sources: true },
+    });
+    expect(survivor).not.toBeNull();
+    expect(survivor!.sources.map((s) => s.sourceType)).toEqual(["recipe"]);
+    expect(survivor!.sourceSummary).toBe("Tacos");
+    await prisma.shoppingListItem.delete({ where: { id: dualRow.id } });
+
     // Restock checked adds restock provenance; unchecked removes the restock-only row. The
     // batch save redirects to the Final List step on success.
     await expect(

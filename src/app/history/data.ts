@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold, getDefaultStore } from "@/lib/context";
+import { SOURCE_LABELS } from "@/lib/constants";
 import {
   windowStart,
   aggregateSpendBySection,
@@ -8,8 +9,7 @@ import {
 } from "@/services/AnalyticsService";
 
 // Source labels on a snapshot item that are NOT meals — everything else is a recipe title.
-// Mirrors the SOURCE_LABELS values written by completeTrip (src/app/grocery-list/complete.ts).
-const NON_MEAL_LABELS = new Set(["Weekly Staples", "Restock", "Pantry", "Manual", "Recipe"]);
+const NON_MEAL_LABELS = new Set(Object.values(SOURCE_LABELS));
 
 // All analytics for the History page, scoped to the default 6-month window (spec 6.15).
 export async function getAnalytics(now = new Date()) {

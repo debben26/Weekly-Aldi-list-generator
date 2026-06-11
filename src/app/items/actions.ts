@@ -3,14 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { isUniqueViolation } from "@/lib/db-errors";
+import { CATALOG_PRICE_CONFIDENCE } from "@/lib/constants";
 import { dimensionForPurchaseUnit } from "@/services/UnitService";
 import { normalizeText } from "@/services/ItemMergeService";
 
 export type ItemFormState = { error?: string };
-
-function isUniqueViolation(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
-}
 
 // Parse the shared Item fields out of the form (spec 6.2 + 5.3a). dimension is derived from
 // the purchase unit, never entered by hand.
@@ -85,8 +83,6 @@ export async function setItemSection(formData: FormData) {
   await prisma.item.update({ where: { id }, data: { defaultSectionId } });
   revalidatePath("/items");
 }
-
-const CATALOG_PRICE_CONFIDENCE = "manual catalog";
 
 // Inline catalog price override. Prices live in PriceObservation so estimates/history keep one
 // source of truth; blank removes the current catalog override and falls back to receipt history.

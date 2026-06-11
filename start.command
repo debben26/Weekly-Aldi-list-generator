@@ -5,6 +5,7 @@ echo "Checking for updates..."
 git pull                # pull David's latest changes
 npm install             # install any new dependencies the update added
 npx prisma generate     # rebuild the database client in case the schema changed
+npx prisma migrate deploy  # apply any new database migrations the update added
 echo "Starting the Meal Planner..."
 npm run dev &
 sleep 4

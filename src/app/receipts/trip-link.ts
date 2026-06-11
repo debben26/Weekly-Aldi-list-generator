@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { buildPaidUpdates } from "@/services/TripPaidBackfillService";
 
 // Receipt → trip paid-data DB layer. Plain module (like match.ts / observations.ts) so it is
@@ -7,24 +8,6 @@ import { buildPaidUpdates } from "@/services/TripPaidBackfillService";
 // matched line totals (TripPaidBackfillService). The sync is a FULL recompute, so any manually
 // entered paid price on a linked trip would be overwritten on the next review action — acceptable
 // while no paid-price entry UI exists.
-
-function isUniqueViolation(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
-}
-
-// Null out a trip's paid data (used on unlink/relink).
-async function clearTripPaidData(tripSnapshotId: string): Promise<void> {
-  await prisma.$transaction([
-    prisma.tripSnapshotItem.updateMany({
-      where: { tripSnapshotId },
-      data: { paidPrice: null },
-    }),
-    prisma.tripSnapshot.update({
-      where: { id: tripSnapshotId },
-      data: { totalPaid: null },
-    }),
-  ]);
-}
 
 /**
  * Recompute the linked trip's paid data from the receipt's current match state (idempotent).
@@ -118,15 +101,27 @@ export async function linkReceiptToTrip(
   if (!receipt) return { ok: false, error: "That receipt no longer exists." };
   if (receipt.tripSnapshotId === tripSnapshotId) return { ok: true }; // no change
 
-  if (receipt.tripSnapshotId) {
-    await clearTripPaidData(receipt.tripSnapshotId);
-  }
-
+  // Clear the previously linked trip's paid data and move the link atomically, so a failure
+  // can't leave the old trip cleared while the receipt still points at it.
   try {
-    await prisma.receipt.update({
-      where: { id: receiptId },
-      data: { tripSnapshotId },
-    });
+    await prisma.$transaction([
+      ...(receipt.tripSnapshotId
+        ? [
+            prisma.tripSnapshotItem.updateMany({
+              where: { tripSnapshotId: receipt.tripSnapshotId },
+              data: { paidPrice: null },
+            }),
+            prisma.tripSnapshot.update({
+              where: { id: receipt.tripSnapshotId },
+              data: { totalPaid: null },
+            }),
+          ]
+        : []),
+      prisma.receipt.update({
+        where: { id: receiptId },
+        data: { tripSnapshotId },
+      }),
+    ]);
   } catch (e) {
     if (isUniqueViolation(e)) {
       return { ok: false, error: "That trip is already linked to another receipt." };

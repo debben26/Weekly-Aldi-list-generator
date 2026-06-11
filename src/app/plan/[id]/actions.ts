@@ -6,19 +6,13 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold } from "@/lib/context";
 import { createManualListItem } from "@/lib/manual-list-items";
+import { num } from "@/lib/forms";
 import { getRankedSuggestions } from "@/app/meal-plan/data";
 import { generateFromMealPlan } from "@/app/grocery-list/generate";
 import { clampMealCount, selectPackage, pickReplacement } from "@/services/MealPackageService";
 
 function mealsPath(planId: string) {
   return `/plan/${planId}/meals`;
-}
-
-function num(v: FormDataEntryValue | null): number | null {
-  const s = String(v ?? "").trim();
-  if (s === "") return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
 }
 
 type BatchListItemRow = {
@@ -192,9 +186,12 @@ export async function useTheseMeals(formData: FormData) {
 
 // ---------- Weekly Staples step ----------
 
-// Save the staples checklist in one shot: checked rules are added to the draft list (no-op if
-// already present), unchecked rules are removed, then the wizard advances to Restock. Staples
-// are opt-in — list generation no longer adds them, so a fresh list starts with none checked.
+// Save the staples checklist in one shot: checked rules gain weekly_staple provenance on the
+// draft list, unchecked rules lose it, then the wizard advances to Restock. Staples are
+// opt-in — list generation no longer adds them, so a fresh list starts with none checked.
+// Removing provenance drops the row only when the staple was its only source; a row that also
+// came from a recipe (or manual add) stays and only the staple source/label is stripped. Rows
+// without weekly_staple provenance are never touched. Mirrors saveRestockSelections below.
 export async function saveStapleSelections(formData: FormData) {
   const planId = String(formData.get("planId") ?? "");
   const listId = String(formData.get("listId") ?? "");
@@ -206,53 +203,84 @@ export async function saveStapleSelections(formData: FormData) {
   });
   if (!plan) redirect("/plan");
 
-  const [rules, onList] = await Promise.all([
-    prisma.stapleRule.findMany({
-      where: { householdId: plan!.householdId, ruleType: "weekly", active: true },
-      include: { item: true },
-    }),
-    prisma.shoppingListItem.findMany({
-      where: { shoppingListId: listId, itemId: { not: null } },
-      select: { itemId: true },
-    }),
-  ]);
-  const onListItemIds = new Set(onList.map((i) => i.itemId));
+  const rules = await prisma.stapleRule.findMany({
+    where: { householdId: plan!.householdId, ruleType: "weekly", active: true },
+    include: { item: true },
+  });
+  const rows = await prisma.shoppingListItem.findMany({
+    where: { shoppingListId: listId, itemId: { in: rules.map((r) => r.itemId) } },
+    include: { sources: true },
+  });
+  const rowByItemId = new Map(rows.filter((row) => row.itemId).map((row) => [row.itemId!, row]));
+
   const createRows: BatchListItemRow[] = [];
   const createSourceRows: BatchListItemSourceRow[] = [];
-  const deleteItemIds: string[] = [];
+  const updateRows: { id: string; sourceSummary: string | null }[] = [];
+  const deleteRowIds: string[] = [];
+  const stripStapleSourceRowIds: string[] = [];
 
   for (const rule of rules) {
-    const checked = checkedRuleIds.has(rule.id);
-    if (checked && !onListItemIds.has(rule.itemId)) {
+    const row = rowByItemId.get(rule.itemId);
+    const hasStapleSource = row?.sources.some((s) => s.sourceType === "weekly_staple") ?? false;
+
+    if (checkedRuleIds.has(rule.id)) {
+      if (hasStapleSource) continue;
       const unit = rule.defaultUnit ?? rule.item.purchaseUnit;
-      const id = randomUUID();
-      createRows.push({
-        id,
-        shoppingListId: listId,
-        itemId: rule.itemId,
-        displayName: rule.item.canonicalName,
-        quantity: rule.defaultQuantity,
-        unit,
-        sectionId: rule.defaultSectionId ?? rule.item.defaultSectionId,
-        sourceSummary: "Weekly Staples",
-      });
-      createSourceRows.push({
-        shoppingListItemId: id,
-        sourceType: "weekly_staple" as const,
-        quantity: rule.defaultQuantity,
-        unit,
-      });
-    } else if (!checked && onListItemIds.has(rule.itemId)) {
-      // Full-row delete mirrors the old excludeStaple — a staple item that also came from a
-      // recipe is uncommon; Phase 1 keeps this simple.
-      deleteItemIds.push(rule.itemId);
+      if (!row) {
+        const id = randomUUID();
+        createRows.push({
+          id,
+          shoppingListId: listId,
+          itemId: rule.itemId,
+          displayName: rule.item.canonicalName,
+          quantity: rule.defaultQuantity,
+          unit,
+          sectionId: rule.defaultSectionId ?? rule.item.defaultSectionId,
+          sourceSummary: "Weekly Staples",
+        });
+        createSourceRows.push({
+          shoppingListItemId: id,
+          sourceType: "weekly_staple" as const,
+          quantity: rule.defaultQuantity,
+          unit,
+        });
+      } else {
+        const labels = (row.sourceSummary ?? "").split(" + ").filter(Boolean);
+        if (!labels.includes("Weekly Staples")) labels.push("Weekly Staples");
+        updateRows.push({ id: row.id, sourceSummary: labels.join(" + ") });
+        createSourceRows.push({
+          shoppingListItemId: row.id,
+          sourceType: "weekly_staple" as const,
+          quantity: rule.defaultQuantity,
+          unit,
+        });
+      }
+      continue;
+    }
+
+    if (!row || !hasStapleSource) continue;
+    const others = row.sources.filter((s) => s.sourceType !== "weekly_staple");
+    if (others.length === 0) {
+      deleteRowIds.push(row.id);
+    } else {
+      stripStapleSourceRowIds.push(row.id);
+      const labels = (row.sourceSummary ?? "")
+        .split(" + ")
+        .filter((l) => l && l !== "Weekly Staples");
+      updateRows.push({ id: row.id, sourceSummary: labels.join(" + ") || null });
     }
   }
 
   await prisma.$transaction(async (tx) => {
-    if (deleteItemIds.length > 0) {
-      await tx.shoppingListItem.deleteMany({
-        where: { shoppingListId: listId, itemId: { in: deleteItemIds } },
+    if (deleteRowIds.length > 0) {
+      await tx.shoppingListItem.deleteMany({ where: { id: { in: deleteRowIds } } });
+    }
+    if (stripStapleSourceRowIds.length > 0) {
+      await tx.shoppingListItemSource.deleteMany({
+        where: {
+          shoppingListItemId: { in: stripStapleSourceRowIds },
+          sourceType: "weekly_staple",
+        },
       });
     }
     if (createRows.length > 0) {
@@ -260,6 +288,12 @@ export async function saveStapleSelections(formData: FormData) {
     }
     if (createSourceRows.length > 0) {
       await tx.shoppingListItemSource.createMany({ data: createSourceRows });
+    }
+    for (const row of updateRows) {
+      await tx.shoppingListItem.update({
+        where: { id: row.id },
+        data: { sourceSummary: row.sourceSummary },
+      });
     }
   });
 

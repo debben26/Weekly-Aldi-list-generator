@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { dimensionForPurchaseUnit } from "@/services/UnitService";
 
 const DEFAULT_PURCHASE_UNIT = "each";
@@ -28,7 +29,7 @@ export async function findOrCreateItem(rawName: string): Promise<string> {
     return created.id;
   } catch (e) {
     // Unique race: a concurrent create won — re-query and reuse it.
-    if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002") {
+    if (isUniqueViolation(e)) {
       const again = await prisma.item.findFirst({
         where: { canonicalName: { equals: name, mode: "insensitive" } },
         select: { id: true },

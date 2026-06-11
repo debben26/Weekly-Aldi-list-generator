@@ -6,6 +6,7 @@
 import type { PriceEstimate, EstimateConfidence } from "@/services/PriceEstimationService";
 
 export type OrderLineInput = {
+  lineId?: string | null; // ShoppingListItem id, when estimating a persisted list
   displayName: string;
   quantity: number; // purchase units (default 1 upstream)
   taxable: boolean;
@@ -16,6 +17,7 @@ export type OrderLineInput = {
 };
 
 export type OrderLineEstimate = {
+  lineId: string | null;
   displayName: string;
   quantity: number;
   point: number;
@@ -51,6 +53,7 @@ function round2(n: number): number {
  */
 export function estimateOrder(lines: OrderLineInput[], taxRate: number): OrderEstimate {
   const lineEstimates: OrderLineEstimate[] = lines.map((l) => ({
+    lineId: l.lineId ?? null,
     displayName: l.displayName,
     quantity: l.quantity,
     point: round2(l.estimate.point * l.quantity),

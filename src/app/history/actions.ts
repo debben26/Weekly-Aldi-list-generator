@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getDefaultStore } from "@/lib/context";
+import { CATALOG_PRICE_CONFIDENCE } from "@/lib/constants";
 
 function backWithError(message: string): never {
   redirect(`/history?error=${encodeURIComponent(message)}`);
@@ -47,12 +48,17 @@ export async function deleteTrip(formData: FormData) {
 
   await prisma.$transaction(async (tx) => {
     if (itemIds.length > 0) {
+      // Only the observations completeTrip wrote for THIS completion: never receipt-linked rows
+      // (receiptLineItemId) and never manual catalog price overrides, which share the "manual"
+      // sourceType but are marked with CATALOG_PRICE_CONFIDENCE.
       await tx.priceObservation.deleteMany({
         where: {
           itemId: { in: itemIds },
           storeId,
           observedDate: dateOnly(snapshot.completedAt),
           sourceType: { in: ["estimated", "manual"] },
+          receiptLineItemId: null,
+          OR: [{ confidence: null }, { confidence: { not: CATALOG_PRICE_CONFIDENCE } }],
         },
       });
     }

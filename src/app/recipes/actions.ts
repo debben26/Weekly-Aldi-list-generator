@@ -5,16 +5,10 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold } from "@/lib/context";
 import { findOrCreateItem } from "@/lib/items";
+import { num } from "@/lib/forms";
 import { computeAldiFit } from "@/services/MealSuggestionService";
 
 export type RecipeFormState = { error?: string };
-
-function num(v: FormDataEntryValue | null): number | null {
-  const s = String(v ?? "").trim();
-  if (s === "") return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
 
 // Recompute and persist the recipe's derived Aldi fit (spec 8.4) after any ingredient change.
 async function recomputeAldiFit(recipeId: string) {

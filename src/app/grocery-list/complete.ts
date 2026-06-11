@@ -1,18 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { SOURCE_LABELS } from "@/lib/constants";
 import {
   buildSnapshotItem,
   tripTotals,
   type LiveListItem,
 } from "@/services/TripCompletionService";
 import { computeUnitPrice, priceObservations } from "@/services/PriceObservationService";
-
-const SOURCE_LABELS: Record<string, string> = {
-  weekly_staple: "Weekly Staples",
-  restock: "Restock",
-  pantry_review: "Pantry",
-  manual: "Manual",
-  recipe: "Recipe",
-};
+import { estimateListOrder } from "@/app/grocery-list/estimate";
 
 function dateOnly(from: Date): Date {
   return new Date(from.getFullYear(), from.getMonth(), from.getDate());
@@ -50,6 +44,16 @@ export async function completeTrip(listId: string): Promise<string> {
   const labelFor = (s: { recipeId: string | null; sourceType: string }) =>
     s.recipeId ? (recipeTitles.get(s.recipeId) ?? "Recipe") : SOURCE_LABELS[s.sourceType];
 
+  // Per-line price estimates (§8.1/8.2), computed now so the frozen snapshot carries the
+  // estimate the user shopped against. Line `point` is quantity-scaled — a line total, the
+  // same basis as paidPrice. A stored estimatedPrice on the row (if one ever exists) wins.
+  const orderEstimate = await estimateListOrder(listId);
+  const estByLineId = new Map(
+    (orderEstimate?.lines ?? [])
+      .filter((l) => l.lineId != null)
+      .map((l) => [l.lineId as string, { point: l.point, confidence: l.confidence }]),
+  );
+
   const liveItems: LiveListItem[] = list.items.map((it) => ({
     itemId: it.itemId,
     displayName: it.displayName,
@@ -57,7 +61,10 @@ export async function completeTrip(listId: string): Promise<string> {
     unit: it.unit,
     sectionName: it.section?.name ?? "Other",
     checked: it.checked,
-    estimatedPrice: it.estimatedPrice != null ? Number(it.estimatedPrice) : null,
+    estimatedPrice:
+      it.estimatedPrice != null
+        ? Number(it.estimatedPrice)
+        : (estByLineId.get(it.id)?.point ?? null),
     paidPrice: it.paidPrice != null ? Number(it.paidPrice) : null,
     sourceLabels: [...new Set(it.sources.map(labelFor))],
   }));
@@ -88,7 +95,13 @@ export async function completeTrip(listId: string): Promise<string> {
     const priceObsData = [];
     for (const it of list.items) {
       if (!it.checked || !it.itemId) continue;
-      const est = it.estimatedPrice != null ? Number(it.estimatedPrice) : null;
+      // Stored row estimates are always recorded; computed estimates are recorded only when
+      // history/override-backed (high/medium). A low-confidence fallback guess written as an
+      // observation would feed the seeded-baseline fallback and ossify the guess.
+      const stored = it.estimatedPrice != null ? Number(it.estimatedPrice) : null;
+      const computed = estByLineId.get(it.id);
+      const est =
+        stored ?? (computed && computed.confidence !== "low" ? computed.point : null);
       const paid = it.paidPrice != null ? Number(it.paidPrice) : null;
       // Record estimated and paid as separate observations so price history keeps them
       // distinguishable (spec 6.15) — a line with both prices yields two rows.

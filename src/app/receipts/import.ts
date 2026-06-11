@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getDefaultStore } from "@/lib/context";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { parseAndValidate } from "@/services/ReceiptImportService";
 import { applyMatching } from "@/app/receipts/match";
 import { linkReceiptToTrip } from "@/app/receipts/trip-link";
@@ -15,14 +16,6 @@ import { linkReceiptToTrip } from "@/app/receipts/trip-link";
 //      confirmation (warnings never block — the user may proceed).
 //   4. Persist Receipt + ReceiptLineItem rows, with raw_import_json and each raw_name verbatim.
 //      Matching/observations/estimation come in later milestones.
-
-function isUniqueViolation(e: unknown): boolean {
-  return (
-    typeof e === "object" &&
-    e !== null &&
-    (e as Record<string, unknown>).code === "P2002"
-  );
-}
 
 export type ImportResult =
   | { status: "error"; error: string }

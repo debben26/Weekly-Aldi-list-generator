@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { dimensionForPurchaseUnit } from "@/services/UnitService";
 import { normalizeText } from "@/services/ItemMergeService";
 import { recomputeImportStatus } from "@/app/receipts/match";
@@ -9,10 +10,6 @@ import { syncTripPaidData } from "@/app/receipts/trip-link";
 // unit/integration testable; the "use server" actions in review-actions.ts are thin wrappers that
 // add revalidatePath. Each operation resolves one line, runs the alias-learning loop where it
 // applies, reconciles the receipt's import_status, and returns the receiptId for revalidation.
-
-function isUniqueViolation(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
-}
 
 // Learning loop (§6.2): record this receipt's normalized line text as an alias on the matched item
 // so the same Aldi abbreviation auto-matches next week. Skip the trivial case where the line already

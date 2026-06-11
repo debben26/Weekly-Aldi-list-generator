@@ -20,7 +20,8 @@ export async function setPantryStatus(formData: FormData) {
 
   const household = await getDefaultHousehold();
   const quantityRaw = String(formData.get("quantity") ?? "").trim();
-  const quantity = quantityRaw === "" ? null : Number(quantityRaw);
+  const parsed = quantityRaw === "" ? null : Number(quantityRaw);
+  const quantity = parsed != null && Number.isFinite(parsed) ? parsed : null;
   const unit = String(formData.get("unit") ?? "").trim() || null;
 
   await prisma.pantryItem.upsert({
@@ -34,7 +35,7 @@ export async function setPantryStatus(formData: FormData) {
       householdId: household.id,
       itemId,
       status,
-      quantity: quantity && Number.isFinite(quantity) ? quantity : null,
+      quantity,
       unit,
     },
   });

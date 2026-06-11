@@ -31,8 +31,8 @@ export default async function GroceryListIndex({
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Grocery List</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Generate a merged, route-sorted list from a meal plan&rsquo;s staples + scaled recipes,
-          then edit and print it.
+          Generate a merged, route-sorted list from a meal plan&rsquo;s scaled recipes (staples
+          are added on the plan&rsquo;s Staples step), then edit and print it.
         </p>
       </div>
 

@@ -1,17 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { SOURCE_LABELS } from "@/lib/constants";
 import PrintButton from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
-
-const SOURCE_LABELS: Record<string, string> = {
-  weekly_staple: "Weekly Staples",
-  restock: "Restock",
-  pantry_review: "Pantry",
-  manual: "Manual",
-  recipe: "Recipe",
-};
 
 function fmtQ(n: number | null): string {
   if (n == null) return "";

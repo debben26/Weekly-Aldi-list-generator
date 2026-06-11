@@ -180,4 +180,31 @@ describe("estimateListOrder", () => {
 
     expect(e.summary).toBe("2 of 4 items based on real history");
   });
+
+  it("does not multiply a per-purchase-unit price by a recipe-unit quantity", async () => {
+    // Milk priced per gallon (catalog override 9.99); a row of "3 cup" must estimate as ONE
+    // purchase unit, not 3 × 9.99. A unit-less quantity still scales (plain count), and a
+    // quantity in the purchase unit scales too.
+    const cupRow = await prisma.shoppingListItem.create({
+      data: { shoppingListId: listId, displayName: `${TAG} Cup Milk`, itemId: milkId, quantity: 3, unit: "cup", sectionId },
+      select: { id: true },
+    });
+    const gallonRow = await prisma.shoppingListItem.create({
+      data: { shoppingListId: listId, displayName: `${TAG} Gallon Milk`, itemId: milkId, quantity: 2, unit: "gallon", sectionId },
+      select: { id: true },
+    });
+    try {
+      const e = await estimateListOrder(listId, NOW);
+      expect(e).not.toBeNull();
+      if (!e) return;
+      const cup = e.lines.find((l) => l.displayName === `${TAG} Cup Milk`)!;
+      const gallon = e.lines.find((l) => l.displayName === `${TAG} Gallon Milk`)!;
+      expect(cup.quantity).toBe(1);
+      expect(cup.point).toBe(9.99);
+      expect(gallon.quantity).toBe(2);
+      expect(gallon.point).toBe(19.98);
+    } finally {
+      await prisma.shoppingListItem.deleteMany({ where: { id: { in: [cupRow.id, gallonRow.id] } } });
+    }
+  });
 });

@@ -54,7 +54,6 @@ export default async function GroceryListEditor({
   }
   const orderedGroups = [...groups.values()].sort((a, b) => a.sort - b.sort);
 
-  const estTotal = list.items.reduce((t, i) => t + (i.estimatedPrice ? Number(i.estimatedPrice) : 0), 0);
   const checkedCount = list.items.filter((i) => i.checked).length;
   // Disable a restock add only when that item's row already carries a restock source — an item
   // present merely as a staple/recipe ingredient can still have restock provenance added (6.10/6.11).
@@ -77,7 +76,7 @@ export default async function GroceryListEditor({
           </h1>
           <p className="mt-1 text-sm text-gray-500">
             {list.store.brand} · {list.store.name} — {list.items.length} items, {checkedCount}{" "}
-            checked{estTotal > 0 ? ` · est. $${estTotal.toFixed(2)}` : ""}
+            checked
           </p>
         </div>
         <div className="flex items-center gap-2">

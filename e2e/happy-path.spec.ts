@@ -38,8 +38,9 @@ test("full weekly planning journey end to end", async ({ page }) => {
   await page.getByRole("button", { name: "Generate grocery list" }).click();
   await expect(page).toHaveURL(/\/grocery-list\/[a-z0-9]+$/);
   await expect(page.getByRole("heading", { level: 1, name: /Grocery List/ })).toBeVisible();
-  // The mapped recipe ingredient surfaces as a list item.
-  await expect(page.getByText(itemName).first()).toBeVisible();
+  // The mapped recipe ingredient surfaces as a list ROW. (A bare getByText would match the
+  // order-estimate panel's collapsed per-item breakdown first, which is hidden.)
+  await expect(page.getByRole("listitem").filter({ hasText: itemName }).first()).toBeVisible();
 
   // 7. Check off the first item.
   const firstToggle = page.getByRole("button", { name: "toggle checked" }).first();

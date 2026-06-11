@@ -68,7 +68,15 @@ export default async function StaplesStep({
   }
   const orderedStapleGroups = [...stapleGroups.values()].sort((a, b) => a.sort - b.sort);
 
-  const onList = new Set(list.items.map((i) => i.itemId).filter(Boolean) as string[]);
+  // Items already carrying weekly_staple provenance on the draft list. Mere list presence (a
+  // recipe ingredient or manual add) does NOT pre-check a staple — unchecking only ever strips
+  // staple provenance, so it must mirror what saveStapleSelections acts on.
+  const stapled = new Set(
+    list.items
+      .filter((i) => i.sources.some((s) => s.sourceType === "weekly_staple"))
+      .map((i) => i.itemId)
+      .filter(Boolean) as string[],
+  );
   // One-off items added on this step (purely manual provenance) - shown so they appear right away.
   const added = list.items.filter(
     (i) => i.sources.length > 0 && i.sources.every((s) => s.sourceType === "manual"),
@@ -111,7 +119,7 @@ export default async function StaplesStep({
                         type="checkbox"
                         name="ruleIds"
                         value={s.id}
-                        defaultChecked={onList.has(s.itemId)}
+                        defaultChecked={stapled.has(s.itemId)}
                         className="peer h-4 w-4 accent-aldi-navy"
                       />
                       <span className="text-sm text-gray-500 peer-checked:text-gray-900">

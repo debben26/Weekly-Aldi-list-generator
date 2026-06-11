@@ -65,8 +65,8 @@ export default async function StaplesPage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-aldi-navy">Staples &amp; Restock</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Weekly staples auto-add to every list. Restock items appear here when due — they are
-          not added automatically.
+          Weekly staples are offered as a checklist on each week&apos;s plan — check the ones you
+          want that week. Restock items appear here when due — they are not added automatically.
         </p>
       </div>
 

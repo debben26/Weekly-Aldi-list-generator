@@ -31,5 +31,12 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: true,
     timeout: 180_000,
+    // E2E mutates data through the UI; point it at the local Docker DB via E2E_DATABASE_URL so
+    // it never touches the live database in .env. NOTE: reuseExistingServer means an already-
+    // running dev server (with its own DATABASE_URL) bypasses this override.
+    env: {
+      ...process.env,
+      DATABASE_URL: process.env.E2E_DATABASE_URL ?? process.env.DATABASE_URL ?? "",
+    },
   },
 });

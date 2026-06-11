@@ -49,6 +49,20 @@ export const ESTIMATE_GENERIC_RANGE_PCT = 0.6; // generic range = point × [0.4,
 // Settings store; a constant for now (WI combined ~5.5%).
 export const DEFAULT_TAX_RATE = 0.055;
 
+// Marker on a PriceObservation.confidence identifying a manual catalog price override
+// (set from the Items page). Estimates treat these as overrides, not receipt history.
+export const CATALOG_PRICE_CONFIDENCE = "manual catalog";
+
+// Display labels for ShoppingListItemSource.sourceType, used on frozen snapshots and the
+// printable list. History treats any snapshot label NOT in this set as a recipe title.
+export const SOURCE_LABELS: Record<string, string> = {
+  weekly_staple: "Weekly Staples",
+  restock: "Restock",
+  pantry_review: "Pantry",
+  manual: "Manual",
+  recipe: "Recipe",
+};
+
 // Default Aldi route order (spec 5.2). Other / Unassigned is always last.
 export const DEFAULT_SECTION_ORDER: string[] = [
   "Produce",

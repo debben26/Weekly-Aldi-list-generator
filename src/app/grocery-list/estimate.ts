@@ -11,13 +11,11 @@ import {
   type OrderLineInput,
   type OrderEstimate,
 } from "@/services/OrderEstimationService";
-import { DEFAULT_TAX_RATE } from "@/lib/constants";
+import { DEFAULT_TAX_RATE, CATALOG_PRICE_CONFIDENCE } from "@/lib/constants";
 
 // Total-order estimate DB layer (phase2-receipts-spec.md §8.2 / M4). Plain module (like match.ts):
 // fetch the real paid observations for the list's store within the 6-month window, resolve each
 // line's per-item estimate (§8.1) + taxability, then hand off to the pure OrderEstimationService.
-
-const CATALOG_PRICE_CONFIDENCE = "manual catalog";
 
 // Real paid prices feed known/sparse estimates; catalog manual prices are handled as overrides.
 const REAL_PRICE_SOURCES = ["receipt", "manual"] as const;
@@ -45,12 +43,14 @@ export async function estimateListOrder(
       items: {
         orderBy: { displayName: "asc" },
         select: {
+          id: true,
           displayName: true,
           quantity: true,
+          unit: true,
           itemId: true,
           sectionId: true,
           section: { select: { name: true, sortOrder: true } },
-          item: { select: { taxable: true, defaultSectionId: true } },
+          item: { select: { taxable: true, defaultSectionId: true, purchaseUnit: true } },
         },
       },
     },
@@ -166,9 +166,16 @@ export async function estimateListOrder(
       sectionAverage: sectionId ? (sectionAvg.get(sectionId) ?? null) : null,
       seededBaseline: li.itemId ? (baselineByItem.get(li.itemId) ?? null) : null,
     };
+    // The per-item estimate is per single PURCHASE unit, so only scale by quantity when the
+    // row's quantity is in purchase units: no unit (a plain count) or the item's purchase unit.
+    // A row left in recipe units (e.g. an un-merged "3 cup" line) counts as 1 purchase unit
+    // rather than 3× the unit price.
+    const quantityInPurchaseUnits =
+      li.quantity != null && (li.unit == null || li.unit === li.item?.purchaseUnit);
     return {
+      lineId: li.id,
       displayName: li.displayName,
-      quantity: li.quantity ?? 1,
+      quantity: quantityInPurchaseUnits ? li.quantity! : 1,
       taxable: li.item?.taxable ?? false,
       estimate: override
         ? catalogOverrideEstimate(override.unitPrice)

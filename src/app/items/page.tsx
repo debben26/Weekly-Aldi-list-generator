@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { CATALOG_PRICE_CONFIDENCE } from "@/lib/constants";
 import { windowStart } from "@/services/AnalyticsService";
 import { estimateItemPrice, type ObservationPoint } from "@/services/PriceEstimationService";
 import ItemRow from "./ItemRow";
 
 export const dynamic = "force-dynamic";
-
-const CATALOG_PRICE_CONFIDENCE = "manual catalog";
 
 export default async function ItemsPage({
   searchParams,

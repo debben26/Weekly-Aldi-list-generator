@@ -4,13 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getDefaultHousehold } from "@/lib/context";
-
-function num(v: FormDataEntryValue | null): number | null {
-  const s = String(v ?? "").trim();
-  if (s === "") return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
+import { num } from "@/lib/forms";
 
 export async function createMealPlan(formData: FormData) {
   const weekStartRaw = String(formData.get("weekStartDate") ?? "").trim();
